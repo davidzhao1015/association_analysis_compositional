@@ -73,3 +73,161 @@ knitr::opts_chunk$set(fig.align = 'center',
                       message=FALSE) #stop render when error occurs   
 ```
 
+## Introduction
+
+Association analysis in microbiome studies infers relationship between
+OTUs/ taxa. Pearson r Correlation and Spearman's Rank Correlation are
+classical methods in association analysis. However, microbiome relative
+data is compositional and consequently make the classical methods
+inappropriate. If naively applying classical methods to compositional
+microbiome data, we likely end up with getting spurious correlations.
+
+The review article published in 2017, "Microbiome datasets are
+compositional: and this is not optional" [@gloor2017]summarized four
+newly-invented statistical methods dealing with compositionality and
+achieving reliable association relationship. The four methods consists
+of SparCC, Spiec Easi, ϕ and ρ.
+
+In this project, I intend to demonstrate analysis over the HMP-IBD
+microbiome dataset using the above four statistical methods; and to
+compare outcomes based on the four methods against ones based on
+Spearman's Rank Correlation.
+
+## R workflow (use proportionality analysis with propr package as an example)
+
+1.  Load dataset
+2.  Calculate proportionality
+3.  Identify proportionally abundant taxa
+4.  Visualizing proportionality
+5.  Differential proportionality analysis
+
+## Scripts
+
+```{r libaries}
+library(tidyverse) 
+library(propr)
+
+
+
+
+```
+
+### Step 1. Load dataset
+
+The microbiome OTU table and metadata was retrieved from [ML
+Repo](https://knights-lab.github.io/MLRepo/docs/turnbaugh_lean_obese_all.html)
+
+```{r}
+
+# raw OTU table
+raw_otu <- read.csv(file = "https://knights-lab.github.io/MLRepo/datasets/turnbaugh/refseq/otutable.txt",
+                    header=T,
+                    sep = "")
+
+```
+
+Read in the metadata from URL.
+
+```{r}
+
+# metadata 
+
+meta <- read.csv(file = "https://knights-lab.github.io/MLRepo/datasets/turnbaugh/task-obese-lean-all.txt",
+         header = TRUE,
+         sep = "") 
+
+```
+
+The metadata contains `r dim(meta)[1]` samples. `Var` indicates the
+independent, binary variable of interest, `Lean` and `Obese`.
+
+Transpose the OTU table into sample x taxa format subject to
+proportionality analysis.
+
+```{r transpose OTU table}
+
+raw_otu_t <- raw_otu %>% 
+        select(-ID) %>% 
+        gather(key = "sample", value = "reads", -"X.OTU") %>% 
+        spread(key = "X.OTU", value = "reads") %>% 
+        column_to_rownames("sample") 
+
+head(raw_otu_t, 6) # view first rows 
+
+
+```
+
+The resulting OTU table contains `r length(unique(raw_otu_t$sample))`
+samples; and `r ncol(raw_otu_t)-1` taxa.
+
+
+Check if any missing values in the OTU table. Replace missing values with zero if any. 
+
+```{r missingness}
+
+sum(is.na(raw_otu_t)) 
+
+raw_otu_t_na <- raw_otu_t %>% 
+        replace(is.na(.), 0)
+
+sum(is.na(raw_otu_t_na))
+
+```
+
+
+### Step 2. Calculate proportionanility using propr R package 
+
+Create the objects, `phi`, `rho`, and `phs` using the functions `phit()`, `perb()`, and `phis()`, respectively. 
+
+```{r proportionality}
+
+phi <- phit(raw_otu_t_na, symmetrize = TRUE) 
+
+rho <- perb(raw_otu_t_na, ivar = 0)
+
+phs <- phis(raw_otu_t_na, ivar = 0) 
+
+
+
+# try codes by T.P.Quinn et al. GigaScience (2019)
+pr <- propr(counts = raw_otu_t_na,
+            metric = "rho",
+            ivar = "clr")
+
+pr <- updateCutoffs(pr, cutoff = seq(0,1,.05)) 
+
+pr@fdr
+
+getNetwork(pr, cutoff = 0.9) 
+
+result_rho_df <- getResults(pr, cutoff = 0.9)
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
