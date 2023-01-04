@@ -86,7 +86,10 @@ The review article published in 2017, "Microbiome datasets are
 compositional: and this is not optional" [@gloor2017]summarized four
 newly-invented statistical methods dealing with compositionality and
 achieving reliable association relationship. The four methods consists
-of SparCC, Spiec Easi, ϕ and ρ.
+of SparCC, Spiec Easi, proportionality (ϕ and ρ).
+
+Proportionality is a precise indicator of absolute correlation, although
+sensitivity is limited [@quinn2017].
 
 In this project, I intend to demonstrate analysis over the HMP-IBD
 microbiome dataset using the above four statistical methods; and to
@@ -105,10 +108,12 @@ Spearman's Rank Correlation.
 
 ```{r libaries}
 library(tidyverse) 
+
+library(devtools)
+install_github("tpq/propr")  
 library(propr)
 
-
-
+library(stringr)
 
 ```
 
@@ -126,6 +131,42 @@ raw_otu <- read.csv(file = "https://knights-lab.github.io/MLRepo/datasets/turnba
 
 ```
 
+The raw OTU table contains 557 features (OTUs) in 281 samples.
+
+Shorten OTU identifiers with keeping only genus and species names, using
+`stringr` package. And then accumulate counts of OTUs at the species
+level.
+
+```{r shorten OTU names}
+
+head(raw_otu$X.OTU) 
+
+# split strings 
+otu.id <- raw_otu$X.OTU
+
+split_otu.id <- str_split_fixed(otu.id, "_", n=6) %>% 
+        as.data.frame()
+
+# join genus and species fragments 
+join_split_otu.id <- split_otu.id %>% 
+        mutate(taxa = str_c(V3, V4, sep = " ")) 
+
+taxa <- join_split_otu.id$taxa 
+
+# merge taxa to raw otu table 
+raw_otu_taxa <- cbind(raw_otu, taxa) 
+
+
+# accumulate counts at the species level 
+otu_count_splevel <- raw_otu_taxa %>% 
+        gather(key = "sample", value = "count", -c("ID", "X.OTU", "taxa")) %>% 
+        group_by(sample, taxa) %>%
+        summarise(count_sp = sum(count, na.rm = T)) %>% 
+        arrange(desc(count_sp)) %>%
+        ungroup()
+
+```
+
 Read in the metadata from URL.
 
 ```{r}
@@ -134,100 +175,260 @@ Read in the metadata from URL.
 
 meta <- read.csv(file = "https://knights-lab.github.io/MLRepo/datasets/turnbaugh/task-obese-lean-all.txt",
          header = TRUE,
-         sep = "") 
+         sep = "") %>% 
+        mutate(sample = X.SampleID, is.obese = Var) %>% 
+        select(sample, is.obese)
+
+head(meta)
 
 ```
 
 The metadata contains `r dim(meta)[1]` samples. `Var` indicates the
 independent, binary variable of interest, `Lean` and `Obese`.
 
-Transpose the OTU table into sample x taxa format subject to
+
+Transpose the OTU table into sample x taxa format which is suitable for
 proportionality analysis.
 
 ```{r transpose OTU table}
+otu_count_splevel2 <- otu_count_splevel %>% 
+        spread(key = "taxa", value = count_sp) %>%
+        column_to_rownames("sample")
 
-raw_otu_t <- raw_otu %>% 
-        select(-ID) %>% 
-        gather(key = "sample", value = "reads", -"X.OTU") %>% 
-        spread(key = "X.OTU", value = "reads") %>% 
+```
+
+Now, OTU count table at the species level contains 517 features, in 281
+samples.
+
+Filter low abundant taxa before the proportionality analysis. Keep only
+the taxa with at least 10 counts in at least 5 samples.
+
+```{r filter low abundant taxa}
+
+keep_index <- apply(otu_count_splevel2, 2, function(x) sum(x >= 10) >= 5)  
+
+
+```
+The resulting OTU table after filtering the low abundant taxa contains 154 unique species/taxa. 
+
+
+Add group variables to the resulting OTU table. 
+```{r group variables}
+
+otu_count_splevel2_meta <- otu_count_splevel2 %>%
+        rownames_to_column("sample") %>%
+        inner_join(meta, by= "sample") %>%
         column_to_rownames("sample") 
 
-head(raw_otu_t, 6) # view first rows 
-
-
-```
-
-The resulting OTU table contains `r length(unique(raw_otu_t$sample))`
-samples; and `r ncol(raw_otu_t)-1` taxa.
-
-
-Check if any missing values in the OTU table. Replace missing values with zero if any. 
-
-```{r missingness}
-
-sum(is.na(raw_otu_t)) 
-
-raw_otu_t_na <- raw_otu_t %>% 
-        replace(is.na(.), 0)
-
-sum(is.na(raw_otu_t_na))
+head(otu_count_splevel2_meta)
 
 ```
 
 
-### Step 2. Calculate proportionanility using propr R package 
+Check if any missing values in the OTU table. Replace missing values
+with zero if any.
 
-Create the objects, `phi`, `rho`, and `phs` using the functions `phit()`, `perb()`, and `phis()`, respectively. 
+```{r handle NA}
+
+sum(is.na(otu_count_splevel2)) 
+
+# otu_count_splevel2_rmna <- otu_count_splevel2 %>%
+#         replace(is.na(.), 0)
+# 
+# sum(is.na(otu_count_splevel2_rmna))
+
+```
+
+### Step 2. Calculate proportionality using propr R package
+
+Calculate a proportionality measurement, `rho` using `propr` function,
+following the procedures and codes provided by T.P.Quinn et al.
+[@quinn2019]
+
+Set three required arguments in the wrapper `propr` function as follows,
+
+-   `counts` a count matrix with subjects as rows and features as
+    columns
+
+-   `metric` the proportionality metric to calculate, 'rho', 'pho' or
+    'phs'
+
+-   `ivar` reference OTU/ feature
 
 ```{r proportionality}
 
-phi <- phit(raw_otu_t_na, symmetrize = TRUE) 
+pr <- propr(counts = otu_count_splevel2, # a count matrix with subjects as rows and features as columns
+            metric = "rho", # the proportionality metric to caculate, 'rho', 'pho' or 'phs'
+            ivar = "clr", # reference OTU/ feature for alr
+            symmetrize = FALSE,
+            p = 100, # permutation cycles (100, by default)  
+            select = keep_index) # filter low-abundant taxa 
 
-rho <- perb(raw_otu_t_na, ivar = 0)
 
-phs <- phis(raw_otu_t_na, ivar = 0) 
+## alternatively, calculate phi, rho or phs using phit(), perb() and phis(), respectively. 
+# phi <- phit(raw_otu_t_na, symmetrize = TRUE) 
+# 
+# rho <- perb(raw_otu_t_na, ivar = 0)
+# 
+# phs <- phis(raw_otu_t_na, ivar = 0) 
+
+```
+
+For proportionality, permute false discovery rate (FDR) for a given
+cut-off, instead of estimating parametric P-value.
+
+```{r permutate FDR}
+
+# select a good cutoff for 'rho' by permuting the FDR at various cutoffs. 
+# below, use [0, .05, ..., .95, 1]
+
+# pr <- updateCutoffs(pr, cutoff = seq(0,1,.05))   
+# 
+# pr@fdr
+
+```
+
+According to the package
+[vignette](https://rdrr.io/cran/propr/f/vignettes/a_introduction.Rmd),
+choose the largest cutoff that keeps the FDR below 0.05. In this case,
+`rho` cutoff is 0.20.
+
+Visualize proportionality with a strict cutoff, using `getNetwork`
+function. The package
+[vignette](https://rdrr.io/cran/propr/f/vignettes/b_visualization.Rmd)
+describes several built-in tools for visualizing proportionality.
+
+```{r proportionality-based network}
+
+getNetwork(pr, cutoff = 0.2) 
 
 
+```
 
-# try codes by T.P.Quinn et al. GigaScience (2019)
-pr <- propr(counts = raw_otu_t_na,
-            metric = "rho",
-            ivar = "clr")
+Export highly-proportional (rho \>= 0.9) features (OTU).
 
-pr <- updateCutoffs(pr, cutoff = seq(0,1,.05)) 
+```{r highly proportional pairs}
 
-pr@fdr
+result_rho_df <- getResults(pr, cutoff = 0.2) 
 
-getNetwork(pr, cutoff = 0.9) 
+result_rho_df 
 
-result_rho_df <- getResults(pr, cutoff = 0.9)
+```
 
+How to interpret proportionality? Proportionality depends on
+log-transformation and must get interpreted with respect to the chosen
+reference.
+
+Interpret clr-based proportionality to signify a coordination that
+follows the general trend of the data. In other words, these
+proportional OTUs move together as individuals relative to how most
+genes move on average [@quinn2019].
+
+## Differential proportionality analysis
+
+`propd` functions in the `propr` package can test whether
+proportionality of certain pairs change between binary experimental
+groups.
+
+According to the package
+[vignette](https://cran.microsoft.com/snapshot/2018-04-24/web/packages/propr/vignettes/e_differential.html),
+`propd` method compares the variance of log-ratio (VLR) for one pair
+across groups, considering two types of differential proportionality,
+
+-   `disjointed proportionality`: proportionality of a pair holds in
+    both groups, but the ratio between the partners changes between the
+    groups (i.e., the slope of the proportionality changes)
+
+-   `emergent proportionality`: proportionality exits in only one of the
+    groups (i.e., the strength of the proportionality changes)
+    
+`propd` function estimates differential proportionality by calculating $theta$ for all features pairs. 
+
+The function takes the following arguments as input:
+
+- `counts` a matrix of $n$ samples (as rows) and $d$ features (as columns) 
+
+- `group` an $n$-dimensional vector corresponding to subject labels 
+
+- `alpha` an optional argument to trigger and guide transformation 
+
+- `p` the total number of permutations used to estimate FDR 
+
+```{r differential proportionality}
+
+counts <- otu_count_splevel2_meta %>% select(-is.obese)
+
+group <- otu_count_splevel2_meta$is.obese 
+
+pd <- propd(counts, group, alpha = NA, p=100) 
+
+```
+
+```{r thetad}
+ 
+theta_d <- setDisjointed(pd)  # disjointed diff prop 
+
+theta_e <- setDisjointed(pd)  # emergent diff prop 
+
+```
+
+
+```{r tabulate results}
+
+theta_d_df <- getResults(theta_d) 
+
+theta_d_df %>% 
+  arrange(theta) 
+
+
+theta_e_df <- getResults(theta_e) 
+
+theta_e_df %>% 
+  arrange(theta_e)
+
+```
+
+
+```{r plot}
+
+plot(theta_d@counts[, "Odoribacter splanchnicus"], 
+     theta_d@counts[, "Bacteroides massiliensis"], 
+     col = ifelse(theta_d@group == "Obese", "red", "blue"))
+grp1 <- theta_d@group == "Obese"
+grp2 <- theta_d@group != "Obese"
+abline(a = 0, 
+       b = theta_d@counts[grp1, "Odoribacter splanchnicus"] / theta_d@counts[grp1, "Bacteroides massiliensis"], 
+       col = "red")
+abline(a = 0, 
+       b = theta_d@counts[grp2, "Odoribacter splanchnicus"] / theta_d@counts[grp2, "Bacteroides massiliensis"], 
+       col = "blue")
+
+
+```
+
+```{r plot ratio abundance}
+
+
+plot(theta_d@counts[, "Odoribacter splanchnicus"] / theta_d@counts[, "Bacteroides massiliensis"],
+     col = ifelse(theta_d@group == "Obese", "red", "blue"))
+
+
+```
+visualize network based on differential proportionality
+```{r }
+
+g <- plot(theta_d, 
+          cutoff=300, 
+          d3= F)  # TRUE for displaying 3-D plot 
 
 ```
 
 
 
+```{r emergent diff network}
+
+plot(theta_e, cutoff=200, d3=T) 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+```
