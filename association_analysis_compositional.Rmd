@@ -106,11 +106,11 @@ Spearman's Rank Correlation.
 
 ## Scripts
 
-```{r libaries}
+```{r libaries, results='hide'}
 library(tidyverse) 
 
 library(devtools)
-install_github("tpq/propr")  
+# install_github("tpq/propr")  
 library(propr)
 
 library(stringr)
@@ -186,7 +186,6 @@ head(meta)
 The metadata contains `r dim(meta)[1]` samples. `Var` indicates the
 independent, binary variable of interest, `Lean` and `Obese`.
 
-
 Transpose the OTU table into sample x taxa format which is suitable for
 proportionality analysis.
 
@@ -209,10 +208,12 @@ keep_index <- apply(otu_count_splevel2, 2, function(x) sum(x >= 10) >= 5)
 
 
 ```
-The resulting OTU table after filtering the low abundant taxa contains 154 unique species/taxa. 
 
+The resulting OTU table after filtering the low abundant taxa contains
+154 unique species/taxa.
 
-Add group variables to the resulting OTU table. 
+Add group variables to the resulting OTU table.
+
 ```{r group variables}
 
 otu_count_splevel2_meta <- otu_count_splevel2 %>%
@@ -223,7 +224,6 @@ otu_count_splevel2_meta <- otu_count_splevel2 %>%
 head(otu_count_splevel2_meta)
 
 ```
-
 
 Check if any missing values in the OTU table. Replace missing values
 with zero if any.
@@ -302,7 +302,6 @@ describes several built-in tools for visualizing proportionality.
 
 getNetwork(pr, cutoff = 0.2) 
 
-
 ```
 
 Export highly-proportional (rho \>= 0.9) features (OTU).
@@ -330,6 +329,10 @@ genes move on average [@quinn2019].
 proportionality of certain pairs change between binary experimental
 groups.
 
+The package
+[vignette](https://cran.microsoft.com/snapshot/2018-04-24/web/packages/propr/vignettes/e_differential.html)
+explains mathematically the differential proportionality measures.
+
 According to the package
 [vignette](https://cran.microsoft.com/snapshot/2018-04-24/web/packages/propr/vignettes/e_differential.html),
 `propd` method compares the variance of log-ratio (VLR) for one pair
@@ -341,92 +344,145 @@ across groups, considering two types of differential proportionality,
 
 -   `emergent proportionality`: proportionality exits in only one of the
     groups (i.e., the strength of the proportionality changes)
-    
-`propd` function estimates differential proportionality by calculating $theta$ for all features pairs. 
+
+`propd` function estimates differential proportionality by calculating
+$theta$ for all features pairs.
 
 The function takes the following arguments as input:
 
-- `counts` a matrix of $n$ samples (as rows) and $d$ features (as columns) 
+-   `counts` a matrix of $n$ samples (as rows) and $d$ features (as
+    columns)
 
-- `group` an $n$-dimensional vector corresponding to subject labels 
+-   `group` an $n$-dimensional vector corresponding to subject labels
 
-- `alpha` an optional argument to trigger and guide transformation 
+-   `alpha` an optional argument to trigger and guide transformation
 
-- `p` the total number of permutations used to estimate FDR 
+-   `p` the total number of permutations used to estimate FDR
 
-```{r differential proportionality}
+```{r differential-proportionality-estimation}
 
-counts <- otu_count_splevel2_meta %>% select(-is.obese)
+counts <- otu_count_splevel2_meta %>% select(-is.obese) # count matrix, sample X taxa 
 
-group <- otu_count_splevel2_meta$is.obese 
+group <- otu_count_splevel2_meta$is.obese # binary classes, obese vs lean 
 
-pd <- propd(counts, group, alpha = NA, p=100) 
+pd <- propd(counts, group, alpha = NA, p=100) # calculate disjointed- and emergent propr. 
 
 ```
 
-```{r thetad}
+According the package vignette, the propd object contains theta_d and theta_e (among others), although only theta_d is active by default. Users can easily change which theta is active the functions `setDisjointed` and `setEmergent`.   
+
+```{r disjointed-and-emergent-differential-propr, collapse=TRUE}
  
-theta_d <- setDisjointed(pd)  # disjointed diff prop 
+theta_d <- setDisjointed(pd)  # activate only disjointed diff prop 
 
-theta_e <- setDisjointed(pd)  # emergent diff prop 
+theta_e <- setEmergent(pd)  # activate only emergent diff prop 
 
 ```
+Extract the detailed results from the above objects, including OTU pairs
+and differential proportionality statistics.
 
+How to identify most important pairs based on the theta_d and theta_e? Qualitatively, the smaller the theta_d, the more important the proportional pairs are. In contrast, the bigger the theta_e, the more important the proportional pairs are. 
 
-```{r tabulate results}
+```{r estimate-FDR-disjointed-propr}
 
+# estimate FDR using updateCutoffs function
+theta_d <- updateCutoffs(theta_d, cutoff = seq(0.91, 1, 0.001)) 
+
+theta_d@fdr  
+```
+
+```{r disjointed-diff-propr-output}
+
+# disjointed diff. proportionality 
 theta_d_df <- getResults(theta_d) 
 
-theta_d_df %>% 
-  arrange(theta) 
+
+```
+The column `theta` equals theta_d matrices. Values of `theta` are 0.91 or greater which are relatively large, indicating that almost all proportional pairs do not obviously change with experimental conditions (i.e., obese or not). In addition, FDR of all the proportional pairs are greater than 5%. 
 
 
-theta_e_df <- getResults(theta_e) 
+Similarly, estimate FDR for the emergent differential proportionality. 
 
-theta_e_df %>% 
-  arrange(theta_e)
+```{r estimate-FDR-emergent-diff, results='hide'}
+
+theta_e <- updateCutoffs(theta_e)
 
 ```
 
 
-```{r plot, fig.height=6, fig.width=8}
+```{r emergent-diff-propr-output}
 
-plot(theta_d@counts[, "Odoribacter splanchnicus"], 
-     theta_d@counts[, "Bacteroides massiliensis"], 
+# emergent diff. proportionality 
+theta_e_df <- getResults(theta_e)  
+
+```
+
+```{r disjointed-prop-based-scatter-plot, fig.height=6, fig.width=8, include=FALSE}
+
+plot(theta_d@counts[, "Odoribacter splanchnicus"],
+     theta_d@counts[, "Bacteroides massiliensis"],
      col = ifelse(theta_d@group == "Obese", "red", "blue"))
 grp1 <- theta_d@group == "Obese"
 grp2 <- theta_d@group != "Obese"
-abline(a = 0, 
-       b = theta_d@counts[grp1, "Odoribacter splanchnicus"] / theta_d@counts[grp1, "Bacteroides massiliensis"], 
+abline(a = 0,
+       b = theta_d@counts[grp1, "Odoribacter splanchnicus"] / theta_d@counts[grp1, "Bacteroides massiliensis"],
        col = "red")
-abline(a = 0, 
-       b = theta_d@counts[grp2, "Odoribacter splanchnicus"] / theta_d@counts[grp2, "Bacteroides massiliensis"], 
+abline(a = 0,
+       b = theta_d@counts[grp2, "Odoribacter splanchnicus"] / theta_d@counts[grp2, "Bacteroides massiliensis"],
        col = "blue")
 
 
 ```
 
-```{r plot ratio abundance, fig.height=6, fig.width=8}
-
+```{r scatter-plot-ratio-abundance, fig.height=6, fig.width=8, include=FALSE}
 
 plot(theta_d@counts[, "Odoribacter splanchnicus"] / theta_d@counts[, "Bacteroides massiliensis"],
      col = ifelse(theta_d@group == "Obese", "red", "blue"))
 
-
-```
-visualize network based on differential proportionality
-```{r disjointed prop network, fig.height=6, fig.width=8}
-
-g <- plot(theta_d, 
-          cutoff=300, 
-          d3= F)  # TRUE for displaying 3-D plot 
-
 ```
 
 
+### Disproportionality networks
 
-```{r emergent prop network, fig.height=6, fig.width=8}
+Visualize the network based on disjointed differential proportionality using `plot` function. 
 
-plot(theta_e, cutoff=200, d3=T) 
+Providing a value of [0,1] to the cutoff argument will index pairs based on a maximum value of theta. Alternately, providing an integer greater than 1 to the cutoff argument will index the top N pairs as ranked by theta. 
+
+Note that setting `d3 = TRUE` will have the `rgl` package render the network in 3D. 
+
+```{r disjointed-prop-network, fig.height=6, fig.width=8}
+
+net_d <- plot(theta_d, # disjointed proportionality object 
+              cutoff= 300,  
+              d3= F)  # whether or not display 3-D plot 
 
 ```
+
+Each "node" represents a species/taxa while each connecting "edge" represents an indexed pair (i.e. theta < cutoff). 
+
+For disjointed proportionality networks, red edges show an increase in log-ratio means in Obese compared to Lean while blue edges show a decrease in log-ratio means in Lean. 
+
+Importantly, a small number of taxa/ species participants in a large number of the top differentially proportional pairs. 
+
+```{r taxa-in-disjointed-propr, include=FALSE}
+
+net_d
+
+```
+
+
+Visualize the network based on emergent differential proportionality using `plot` function. 
+
+```{r emergent-prop-network, fig.height=6, fig.width=8}
+
+net_e <- plot(theta_e, # emergent proportionality object 
+              cutoff=800, 
+              d3=F)  # whether or not display 3-D plot   
+
+```
+
+For the emergent network, red edges represent an emergency of proportionality in Group 1 compared to Group 2 (i.e., sudden coordination in ...) while blue edges represent a lack of proportionality in Group 1 compared to Group 2 (i.e., no coordination in ...). Visually, the architecture of this network is more sparse than the other. 
+
+According to the packge [vignette](https://cran.microsoft.com/snapshot/2018-04-24/web/packages/propr/vignettes/e_differential.html), note that at the appropriate cutoff, a network will contain all pairs for a given FDR. However, we have routinely found that too many pairs remain when using cutoffs with an acceptable FDR. In this case, we recommend stepping through a number of arbitrarily low cutoffs to find one that produces a representative topology that is computationally tractable and human-interpretable.
+
+
