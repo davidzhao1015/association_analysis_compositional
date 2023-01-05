@@ -389,7 +389,7 @@ theta_e_df %>%
 ```
 
 
-```{r plot}
+```{r plot, fig.height=6, fig.width=8}
 
 plot(theta_d@counts[, "Odoribacter splanchnicus"], 
      theta_d@counts[, "Bacteroides massiliensis"], 
@@ -406,7 +406,7 @@ abline(a = 0,
 
 ```
 
-```{r plot ratio abundance}
+```{r plot ratio abundance, fig.height=6, fig.width=8}
 
 
 plot(theta_d@counts[, "Odoribacter splanchnicus"] / theta_d@counts[, "Bacteroides massiliensis"],
@@ -415,7 +415,7 @@ plot(theta_d@counts[, "Odoribacter splanchnicus"] / theta_d@counts[, "Bacteroide
 
 ```
 visualize network based on differential proportionality
-```{r }
+```{r disjointed prop network, fig.height=6, fig.width=8}
 
 g <- plot(theta_d, 
           cutoff=300, 
@@ -425,10 +425,8 @@ g <- plot(theta_d,
 
 
 
-```{r emergent diff network}
+```{r emergent prop network, fig.height=6, fig.width=8}
 
 plot(theta_e, cutoff=200, d3=T) 
-
-
 
 ```
