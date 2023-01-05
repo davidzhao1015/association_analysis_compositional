@@ -261,14 +261,14 @@ pr <- propr(counts = otu_count_splevel2, # a count matrix with subjects as rows 
             metric = "rho", # the proportionality metric to caculate, 'rho', 'pho' or 'phs'
             ivar = "clr", # reference OTU/ feature for alr
             symmetrize = FALSE,
-            p = 100, # permutation cycles (100, by default)  
-            select = keep_index) # filter low-abundant taxa 
+            p = 100) # permutation cycles (100, by default)  
+            # select = keep_index) # filter low-abundant taxa
 
 
 ## alternatively, calculate phi, rho or phs using phit(), perb() and phis(), respectively. 
 # phi <- phit(raw_otu_t_na, symmetrize = TRUE) 
 # 
-# rho <- perb(raw_otu_t_na, ivar = 0)
+rho <- perb(otu_count_splevel2, ivar =  "clr", select= keep_index)
 # 
 # phs <- phis(raw_otu_t_na, ivar = 0) 
 
@@ -279,12 +279,13 @@ cut-off, instead of estimating parametric P-value.
 
 ```{r permutate FDR}
 
-# select a good cutoff for 'rho' by permuting the FDR at various cutoffs. 
+# select a good cutoff for 'rho' by permuting the FDR at various cutoffs.
 # below, use [0, .05, ..., .95, 1]
 
-# pr <- updateCutoffs(pr, cutoff = seq(0,1,.05))   
+# pr <- updateCutoffs(pr, cutoff = seq(0,1,.05)) 
 # 
 # pr@fdr
+
 
 ```
 
@@ -300,7 +301,7 @@ describes several built-in tools for visualizing proportionality.
 
 ```{r proportionality-based network}
 
-getNetwork(pr, cutoff = 0.2) 
+getNetwork(pr, cutoff = 0.9) 
 
 ```
 
@@ -308,9 +309,10 @@ Export highly-proportional (rho \>= 0.9) features (OTU).
 
 ```{r highly proportional pairs}
 
-result_rho_df <- getResults(pr, cutoff = 0.2) 
+result_rho_df <- getResults(pr, cutoff = 0.9) 
 
 result_rho_df 
+
 
 ```
 
