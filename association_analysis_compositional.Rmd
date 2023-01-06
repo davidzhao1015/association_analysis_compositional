@@ -268,12 +268,12 @@ pr <- propr(counts = otu_count_splevel2, # a count matrix with subjects as rows 
             p = 100) # permutation cycles (100, by default)  
             # select = keep_index) # filter low-abundant taxa
 
-pr@matrix # proportionality metrics 
+# pr@matrix # proportionality metrics 
 
 # subset the propr object, dropping low-abundant taxa 
 pr_sub <- subset(pr, select = keep_index)
 
-pr_sub@matrix # proportionality metrics of high-enough-abundant taxa 
+# pr_sub@matrix # proportionality metrics of high-enough-abundant taxa 
 
 
 # the alternative way to calculate rho statistics
@@ -294,7 +294,7 @@ cut-off, instead of estimating parametric P-value.
 
 pr <- updateCutoffs(pr, cutoff = seq(0, 1,.05)) 
 
-pr@fdr  # identify the maximal cutoff at FDR < 5% 
+# pr@fdr  # identify the maximal cutoff at FDR < 5% 
 
 
 ```
