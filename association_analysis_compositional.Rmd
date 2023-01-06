@@ -201,21 +201,18 @@ otu_count_splevel2 <- otu_count_splevel %>%
 
 ```
 
-Now, OTU count table at the species level contains 517 features, in 281
-samples.
+Now, the resulting OTU count table at the species level contains 517
+features/ species, in 281 samples.
 
-Filter low abundant taxa before the proportionality analysis. Keep only
-the taxa with at least 10 counts in at least 5 samples.
+Identify low-abundant OTUs and index them in the OTU table.
 
 ```{r filter low abundant taxa}
 
-keep_index <- apply(otu_count_splevel2, 2, function(x) sum(x >= 10) >= 5)  
-
+keep_index <- apply(otu_count_splevel2, 2, function(x) sum(x >= 10) >= 5)  # index of low abundant OTUs 
 
 ```
 
-The resulting OTU table after filtering the low abundant taxa contains
-154 unique species/taxa.
+154 unique species/taxa remains after dropping the low-abundant taxa.
 
 Add group variables to the resulting OTU table.
 
@@ -262,20 +259,27 @@ Set three required arguments in the wrapper `propr` function as follows,
 
 ```{r proportionality}
 
+# calculate the propr object 
 pr <- propr(counts = otu_count_splevel2, # a count matrix with subjects as rows and features as columns
-            metric = "rho", # the proportionality metric to caculate, 'rho', 'pho' or 'phs'
-            ivar = "clr", # reference OTU/ feature for alr
+            metric = "rho", # the proportionality metric to calculate, 'rho', 'pho' or 'phs'
+            ivar = "clr", # reference OTU/ feature for alr. 
             symmetrize = FALSE,
             p = 100) # permutation cycles (100, by default)  
             # select = keep_index) # filter low-abundant taxa
 
+pr@matrix # proportionality metrics 
 
-## alternatively, calculate phi, rho or phs using phit(), perb() and phis(), respectively. 
-# phi <- phit(raw_otu_t_na, symmetrize = TRUE) 
-# 
-rho <- perb(otu_count_splevel2, ivar =  "clr", select= keep_index)
-# 
-# phs <- phis(raw_otu_t_na, ivar = 0) 
+# subset the propr object, dropping low-abundant taxa 
+pr_sub <- subset(pr, select = keep_index)
+
+pr_sub@matrix # proportionality metrics of high-enough-abundant taxa 
+
+
+# the alternative way to calculate rho statistics
+# rho <- perb(otu_count_splevel2,
+#             ivar =  "clr",
+#             select= keep_index)  # subset abundant taxa after calculating proportionality on the complete matrix
+
 
 ```
 
@@ -287,17 +291,42 @@ cut-off, instead of estimating parametric P-value.
 # select a good cutoff for 'rho' by permuting the FDR at various cutoffs.
 # below, use [0, .05, ..., .95, 1]
 
-# pr <- updateCutoffs(pr, cutoff = seq(0,1,.05)) 
-# 
-# pr@fdr
+pr <- updateCutoffs(pr, cutoff = seq(0, 1,.05)) 
+
+pr@fdr  # identify the maximal cutoff at FDR < 5% 
 
 
 ```
+The table shows that the maximal cutoff is 0.20 when the FDR reaches 5% or fewer. 
 
-According to the package
-[vignette](https://rdrr.io/cran/propr/f/vignettes/a_introduction.Rmd),
-choose the largest cutoff that keeps the FDR below 0.05. In this case,
-`rho` cutoff is 0.20.
+
+Identify highly-proportional (rho \>= 0.65) feature/ species pairs.
+
+```{r highly-proportional-pairs}
+
+pr_sub_high <- pr_sub[">", .65] 
+pr_sub_high 
+
+pr_sub_high@pairs # index of highly proportional pairs 
+
+pr_sub_high_mt <- pr_sub_high@matrix %>% 
+  as.data.frame()
+
+high_propr_pairs <- pr_sub_high_mt %>% 
+  rownames_to_column("partner") %>%
+  mutate(partner = factor(partner)) %>% 
+  gather(key="pair", value = "rho", -partner) %>% 
+  mutate(pair = factor(pair)) %>% 
+  mutate(partner_index = as.numeric(partner)) %>% 
+  mutate(pair_index = as.numeric(pair)) %>% 
+  filter(partner_index < pair_index) %>% 
+  filter(rho > 0.65) %>% 
+  select(partner, pair, rho)
+
+high_propr_pairs  
+  
+```
+
 
 Visualize proportionality with a strict cutoff, using `getNetwork`
 function. The package
@@ -306,18 +335,9 @@ describes several built-in tools for visualizing proportionality.
 
 ```{r proportionality-based network}
 
-getNetwork(pr, cutoff = 0.9) 
-
-```
-
-Export highly-proportional (rho \>= 0.9) features (OTU).
-
-```{r highly proportional pairs}
-
-result_rho_df <- getResults(pr, cutoff = 0.9) 
-
-result_rho_df 
-
+getNetwork(pr, 
+           cutoff = 0.7, 
+           d3=F) # not display in 3D in this case 
 
 ```
 
@@ -329,6 +349,11 @@ Interpret clr-based proportionality to signify a coordination that
 follows the general trend of the data. In other words, these
 proportional OTUs move together as individuals relative to how most
 genes move on average [@quinn2019].
+
+
+## Evaluate precision and recall of proportionality 
+
+
 
 ## Differential proportionality analysis
 
@@ -409,7 +434,6 @@ theta_d@fdr
 
 # disjointed diff. proportionality 
 theta_d_df <- getResults(theta_d) 
-
 
 ```
 
