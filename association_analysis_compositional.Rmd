@@ -117,7 +117,8 @@ library(tidyverse)
 library(devtools)
 # install_github("tpq/propr")  
 library(propr)
-
+library(Hmisc)  # Spearman correlation 
+library(corrplot)  # visualize correlation matrix 
 library(stringr)
 
 ```
@@ -297,7 +298,7 @@ pr@fdr  # identify the maximal cutoff at FDR < 5%
 
 
 ```
-The table shows that the maximal cutoff is 0.20 when the FDR reaches 5% or fewer. 
+The table shows that the largest cutoff is 0.20 when the FDR reaches 5% or fewer. 
 
 
 Identify highly-proportional (rho \>= 0.65) feature/ species pairs.
@@ -327,7 +328,6 @@ high_propr_pairs
   
 ```
 
-
 Visualize proportionality with a strict cutoff, using `getNetwork`
 function. The package
 [vignette](https://rdrr.io/cran/propr/f/vignettes/b_visualization.Rmd)
@@ -339,6 +339,7 @@ getNetwork(pr,
            cutoff = 0.7, 
            d3=F) # not display in 3D in this case 
 
+# plot(pr_sub_high)
 ```
 
 How to interpret proportionality? Proportionality depends on
@@ -353,6 +354,94 @@ genes move on average [@quinn2019].
 
 ## Evaluate precision and recall of proportionality 
 
+Apply Spearman rank correlation to raw absolute abundance matrix. Consider the resulting Spearman correlation coefficients (absolute correlation) as the true correlations between taxa pairs. 
+
+Use `Hmisc` package to implement Spearman rank correlation analysis and `corrplot` package to visualize correlation matrix. 
+
+```{r spearman-absoulte-corr, fig.height=6, fig.width=8, message=FALSE} 
+
+spearman_corr <- Hmisc::rcorr(as.matrix(otu_count_splevel2), 
+                              type = "spearman")   
+
+corrplot::corrplot(spearman_corr$r, 
+                   method = "color", 
+                   tl.pos = "n",  # mutate text labels 
+                   type="upper") 
+
+```
+```{r compare-abs-vs-rel-corr}
+
+# extract Spearman coefficients 
+abs_corr_r <- spearman_corr$r %>% 
+  as.data.frame() %>% 
+  rownames_to_column("partner") %>% 
+  mutate(partner = factor(partner)) %>% 
+  gather(key="pair", value = "sp_coef", -partner) %>% 
+  mutate(pair = factor(pair)) %>% 
+  mutate(partner_index = as.numeric(partner)) %>% 
+  mutate(pair_index = as.numeric(pair)) %>% 
+  filter(partner_index < pair_index) %>%
+  arrange(partner_index, pair_index)
+
+# extract Spearman p-val 
+abs_corr_pval <- spearman_corr$P %>% 
+  as.data.frame() %>% 
+  rownames_to_column("partner") %>% 
+  mutate(partner = factor(partner)) %>% 
+  gather(key="pair", value = "sp_pval", -partner) %>% 
+  mutate(pair = factor(pair)) %>% 
+  mutate(partner_index = as.numeric(partner)) %>% 
+  mutate(pair_index = as.numeric(pair)) %>% 
+  filter(partner_index < pair_index) %>% 
+  arrange(partner_index, pair_index) 
+  
+# combine Spearman coefficients and p-val 
+abs_corr_r_pval <- abs_corr_r 
+
+abs_corr_r_pval$sp_pval <- abs_corr_pval$sp_pval 
+
+# proportionality matrix (rho)
+propr_rho <- pr@matrix %>%
+  as.data.frame() %>% 
+  rownames_to_column("partner") %>%
+  mutate(partner = factor(partner)) %>% 
+  gather(key="pair", value = "rho", -partner) %>% 
+  mutate(pair = factor(pair)) %>% 
+  mutate(partner_index = as.numeric(partner)) %>% 
+  mutate(pair_index = as.numeric(pair)) %>% 
+  filter(partner_index < pair_index) %>% 
+  arrange(partner_index, pair_index)
+
+# combine absolute correlation and relative correlation coefficients 
+
+abs_rel_coef <- abs_corr_r_pval 
+
+abs_rel_coef$rho_propr <- propr_rho$rho 
+
+ggplot(abs_rel_coef, aes(x= sp_coef, y= rho_propr))+
+  geom_jitter(alpha = 0.5) +
+  stat_smooth(method = "lm")
+
+
+# contingency table 
+abs_rel_coef2 <- abs_rel_coef %>% 
+  mutate(is.sig_sp = case_when(
+    sp_pval <= 0.05 ~ "yes",
+    sp_pval > 0.05 ~ "no"
+  )) %>% 
+  mutate(is.sig_propr = case_when(
+    rho_propr >= 0.9 ~ "yes",
+    rho_propr < 0.9 ~ "no"
+  ))
+
+
+prop.table(table(abs_rel_coef2$is.sig_sp, abs_rel_coef2$is.sig_propr), margin = 1) 
+
+# chi square test 
+chisq.test(table(abs_rel_coef2$is.sig_sp, abs_rel_coef2$is.sig_propr)) 
+
+
+```
 
 
 ## Differential proportionality analysis
