@@ -434,11 +434,8 @@ abs_rel_coef2 <- abs_rel_coef %>%
     rho_propr < 0.9 ~ "no"
   ))
 
-
-prop.table(table(abs_rel_coef2$is.sig_sp, abs_rel_coef2$is.sig_propr), margin = 1) 
-
-# chi square test 
-chisq.test(table(abs_rel_coef2$is.sig_sp, abs_rel_coef2$is.sig_propr)) 
+table("Actual" = abs_rel_coef2$sp_coef > 0.9, 
+      "Observed" = abs_rel_coef2$rho_propr > 0.9)  
 
 
 ```
