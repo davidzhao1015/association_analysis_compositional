@@ -73,7 +73,14 @@ knitr::opts_chunk$set(fig.align = 'center',
                       message=FALSE) #stop render when error occurs   
 ```
 
-## Introduction
+
+## Project purpose
+
+- Demonstrate proportionality analysis of a real microbiome dataset using `propr` package
+
+- Evaluate precision and recall of the proportionality method (relative correlation) 
+
+## Problem
 
 Association analysis in microbiome studies infers relationship between
 OTUs/ taxa. Pearson r Correlation and Spearman's Rank Correlation are
@@ -81,6 +88,8 @@ classical methods in association analysis. However, microbiome relative
 data is compositional and consequently make the classical methods
 inappropriate. If naively applying classical methods to compositional
 microbiome data, we likely end up with getting spurious correlations.
+
+## Solution 
 
 The review article published in 2017, "Microbiome datasets are
 compositional: and this is not optional" [@gloor2017]summarized four
@@ -91,18 +100,13 @@ of SparCC, Spiec Easi, proportionality (ϕ and ρ).
 Proportionality is a precise indicator of absolute correlation, although
 sensitivity is limited [@quinn2017].
 
-In this project, I intend to demonstrate analysis over the HMP-IBD
-microbiome dataset using the above four statistical methods; and to
-compare outcomes based on the four methods against ones based on
-Spearman's Rank Correlation.
+## Markdown outline
 
-## R workflow (use proportionality analysis with propr package as an example)
-
-1.  Load dataset
-2.  Calculate proportionality
-3.  Identify proportionally abundant taxa
-4.  Visualizing proportionality
-5.  Differential proportionality analysis
+- Calculate proportionality
+- Identify highly proportional taxa-pairs 
+- Visualize proportionality
+- Analyze differential proportionality
+- Evaluate precision and recall of the proportionality method
 
 ## Scripts
 
