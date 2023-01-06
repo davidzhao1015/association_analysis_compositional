@@ -1,6 +1,6 @@
 ---
-title: "Association analysis of compositional microbiome data using R packages"
-author: "David Xin Zhao"
+title: "Proportionality analysis of compositional microbiome data, alternative to absolute correlation methods"
+author: "Xin (David) Zhao"
 date: "Last edited `r format(Sys.time(), '%d %B %Y')`"
 knit: (function(inputFile, encoding) {
       out_dir <- 'docs';
@@ -73,7 +73,15 @@ knitr::opts_chunk$set(fig.align = 'center',
                       message=FALSE) #stop render when error occurs   
 ```
 
-## Introduction
+## Project purpose
+
+-   Demonstrate proportionality analysis of a real microbiome dataset
+    using `propr` package
+
+-   Evaluate precision and recall of the proportionality method
+    (relative correlation)
+
+## Problem
 
 Association analysis in microbiome studies infers relationship between
 OTUs/ taxa. Pearson r Correlation and Spearman's Rank Correlation are
@@ -81,6 +89,8 @@ classical methods in association analysis. However, microbiome relative
 data is compositional and consequently make the classical methods
 inappropriate. If naively applying classical methods to compositional
 microbiome data, we likely end up with getting spurious correlations.
+
+## Solution
 
 The review article published in 2017, "Microbiome datasets are
 compositional: and this is not optional" [@gloor2017]summarized four
@@ -91,18 +101,13 @@ of SparCC, Spiec Easi, proportionality (ϕ and ρ).
 Proportionality is a precise indicator of absolute correlation, although
 sensitivity is limited [@quinn2017].
 
-In this project, I intend to demonstrate analysis over the HMP-IBD
-microbiome dataset using the above four statistical methods; and to
-compare outcomes based on the four methods against ones based on
-Spearman's Rank Correlation.
+## Markdown outline
 
-## R workflow (use proportionality analysis with propr package as an example)
-
-1.  Load dataset
-2.  Calculate proportionality
-3.  Identify proportionally abundant taxa
-4.  Visualizing proportionality
-5.  Differential proportionality analysis
+-   Calculate proportionality
+-   Identify highly proportional taxa-pairs
+-   Visualize proportionality
+-   Analyze differential proportionality
+-   Evaluate precision and recall of the proportionality method
 
 ## Scripts
 
@@ -112,7 +117,8 @@ library(tidyverse)
 library(devtools)
 # install_github("tpq/propr")  
 library(propr)
-
+library(Hmisc)  # Spearman correlation 
+library(corrplot)  # visualize correlation matrix 
 library(stringr)
 
 ```
@@ -196,21 +202,18 @@ otu_count_splevel2 <- otu_count_splevel %>%
 
 ```
 
-Now, OTU count table at the species level contains 517 features, in 281
-samples.
+Now, the resulting OTU count table at the species level contains 517
+features/ species, in 281 samples.
 
-Filter low abundant taxa before the proportionality analysis. Keep only
-the taxa with at least 10 counts in at least 5 samples.
+Identify low-abundant OTUs and index them in the OTU table.
 
 ```{r filter low abundant taxa}
 
-keep_index <- apply(otu_count_splevel2, 2, function(x) sum(x >= 10) >= 5)  
-
+keep_index <- apply(otu_count_splevel2, 2, function(x) sum(x >= 10) >= 5)  # index of low abundant OTUs 
 
 ```
 
-The resulting OTU table after filtering the low abundant taxa contains
-154 unique species/taxa.
+154 unique species/taxa remains after dropping the low-abundant taxa.
 
 Add group variables to the resulting OTU table.
 
@@ -257,20 +260,27 @@ Set three required arguments in the wrapper `propr` function as follows,
 
 ```{r proportionality}
 
+# calculate the propr object 
 pr <- propr(counts = otu_count_splevel2, # a count matrix with subjects as rows and features as columns
-            metric = "rho", # the proportionality metric to caculate, 'rho', 'pho' or 'phs'
-            ivar = "clr", # reference OTU/ feature for alr
+            metric = "rho", # the proportionality metric to calculate, 'rho', 'pho' or 'phs'
+            ivar = "clr", # reference OTU/ feature for alr. 
             symmetrize = FALSE,
             p = 100) # permutation cycles (100, by default)  
             # select = keep_index) # filter low-abundant taxa
 
+pr@matrix # proportionality metrics 
 
-## alternatively, calculate phi, rho or phs using phit(), perb() and phis(), respectively. 
-# phi <- phit(raw_otu_t_na, symmetrize = TRUE) 
-# 
-rho <- perb(otu_count_splevel2, ivar =  "clr", select= keep_index)
-# 
-# phs <- phis(raw_otu_t_na, ivar = 0) 
+# subset the propr object, dropping low-abundant taxa 
+pr_sub <- subset(pr, select = keep_index)
+
+pr_sub@matrix # proportionality metrics of high-enough-abundant taxa 
+
+
+# the alternative way to calculate rho statistics
+# rho <- perb(otu_count_splevel2,
+#             ivar =  "clr",
+#             select= keep_index)  # subset abundant taxa after calculating proportionality on the complete matrix
+
 
 ```
 
@@ -282,17 +292,41 @@ cut-off, instead of estimating parametric P-value.
 # select a good cutoff for 'rho' by permuting the FDR at various cutoffs.
 # below, use [0, .05, ..., .95, 1]
 
-# pr <- updateCutoffs(pr, cutoff = seq(0,1,.05)) 
-# 
-# pr@fdr
+pr <- updateCutoffs(pr, cutoff = seq(0, 1,.05)) 
+
+pr@fdr  # identify the maximal cutoff at FDR < 5% 
 
 
 ```
+The table shows that the largest cutoff is 0.20 when the FDR reaches 5% or fewer. 
 
-According to the package
-[vignette](https://rdrr.io/cran/propr/f/vignettes/a_introduction.Rmd),
-choose the largest cutoff that keeps the FDR below 0.05. In this case,
-`rho` cutoff is 0.20.
+
+Identify highly-proportional (rho \>= 0.65) feature/ species pairs.
+
+```{r highly-proportional-pairs}
+
+pr_sub_high <- pr_sub[">", .65] 
+pr_sub_high 
+
+pr_sub_high@pairs # index of highly proportional pairs 
+
+pr_sub_high_mt <- pr_sub_high@matrix %>% 
+  as.data.frame()
+
+high_propr_pairs <- pr_sub_high_mt %>% 
+  rownames_to_column("partner") %>%
+  mutate(partner = factor(partner)) %>% 
+  gather(key="pair", value = "rho", -partner) %>% 
+  mutate(pair = factor(pair)) %>% 
+  mutate(partner_index = as.numeric(partner)) %>% 
+  mutate(pair_index = as.numeric(pair)) %>% 
+  filter(partner_index < pair_index) %>% 
+  filter(rho > 0.65) %>% 
+  select(partner, pair, rho)
+
+high_propr_pairs  
+  
+```
 
 Visualize proportionality with a strict cutoff, using `getNetwork`
 function. The package
@@ -301,19 +335,11 @@ describes several built-in tools for visualizing proportionality.
 
 ```{r proportionality-based network}
 
-getNetwork(pr, cutoff = 0.9) 
+getNetwork(pr, 
+           cutoff = 0.7, 
+           d3=F) # not display in 3D in this case 
 
-```
-
-Export highly-proportional (rho \>= 0.9) features (OTU).
-
-```{r highly proportional pairs}
-
-result_rho_df <- getResults(pr, cutoff = 0.9) 
-
-result_rho_df 
-
-
+# plot(pr_sub_high)
 ```
 
 How to interpret proportionality? Proportionality depends on
@@ -324,6 +350,96 @@ Interpret clr-based proportionality to signify a coordination that
 follows the general trend of the data. In other words, these
 proportional OTUs move together as individuals relative to how most
 genes move on average [@quinn2019].
+
+
+## Evaluate precision and recall of proportionality 
+
+Apply Spearman rank correlation to raw absolute abundance matrix. Consider the resulting Spearman correlation coefficients (absolute correlation) as the true correlations between taxa pairs. 
+
+Use `Hmisc` package to implement Spearman rank correlation analysis and `corrplot` package to visualize correlation matrix. 
+
+```{r spearman-absoulte-corr, fig.height=6, fig.width=8, message=FALSE} 
+
+spearman_corr <- Hmisc::rcorr(as.matrix(otu_count_splevel2), 
+                              type = "spearman")   
+
+corrplot::corrplot(spearman_corr$r, 
+                   method = "color", 
+                   tl.pos = "n",  # mutate text labels 
+                   type="upper") 
+
+```
+```{r compare-abs-vs-rel-corr}
+
+# extract Spearman coefficients 
+abs_corr_r <- spearman_corr$r %>% 
+  as.data.frame() %>% 
+  rownames_to_column("partner") %>% 
+  mutate(partner = factor(partner)) %>% 
+  gather(key="pair", value = "sp_coef", -partner) %>% 
+  mutate(pair = factor(pair)) %>% 
+  mutate(partner_index = as.numeric(partner)) %>% 
+  mutate(pair_index = as.numeric(pair)) %>% 
+  filter(partner_index < pair_index) %>%
+  arrange(partner_index, pair_index)
+
+# extract Spearman p-val 
+abs_corr_pval <- spearman_corr$P %>% 
+  as.data.frame() %>% 
+  rownames_to_column("partner") %>% 
+  mutate(partner = factor(partner)) %>% 
+  gather(key="pair", value = "sp_pval", -partner) %>% 
+  mutate(pair = factor(pair)) %>% 
+  mutate(partner_index = as.numeric(partner)) %>% 
+  mutate(pair_index = as.numeric(pair)) %>% 
+  filter(partner_index < pair_index) %>% 
+  arrange(partner_index, pair_index) 
+  
+# combine Spearman coefficients and p-val 
+abs_corr_r_pval <- abs_corr_r 
+
+abs_corr_r_pval$sp_pval <- abs_corr_pval$sp_pval 
+
+# proportionality matrix (rho)
+propr_rho <- pr@matrix %>%
+  as.data.frame() %>% 
+  rownames_to_column("partner") %>%
+  mutate(partner = factor(partner)) %>% 
+  gather(key="pair", value = "rho", -partner) %>% 
+  mutate(pair = factor(pair)) %>% 
+  mutate(partner_index = as.numeric(partner)) %>% 
+  mutate(pair_index = as.numeric(pair)) %>% 
+  filter(partner_index < pair_index) %>% 
+  arrange(partner_index, pair_index)
+
+# combine absolute correlation and relative correlation coefficients 
+
+abs_rel_coef <- abs_corr_r_pval 
+
+abs_rel_coef$rho_propr <- propr_rho$rho 
+
+ggplot(abs_rel_coef, aes(x= sp_coef, y= rho_propr))+
+  geom_jitter(alpha = 0.5) +
+  stat_smooth(method = "lm")
+
+
+# contingency table 
+abs_rel_coef2 <- abs_rel_coef %>% 
+  mutate(is.sig_sp = case_when(
+    sp_pval <= 0.05 ~ "yes",
+    sp_pval > 0.05 ~ "no"
+  )) %>% 
+  mutate(is.sig_propr = case_when(
+    rho_propr >= 0.9 ~ "yes",
+    rho_propr < 0.9 ~ "no"
+  ))
+
+table("Actual" = abs_rel_coef2$sp_coef > 0.9, 
+      "Observed" = abs_rel_coef2$rho_propr > 0.9)  
+
+
+```
+
 
 ## Differential proportionality analysis
 
@@ -371,7 +487,10 @@ pd <- propd(counts, group, alpha = NA, p=100) # calculate disjointed- and emerge
 
 ```
 
-According the package vignette, the propd object contains theta_d and theta_e (among others), although only theta_d is active by default. Users can easily change which theta is active the functions `setDisjointed` and `setEmergent`.   
+According the package vignette, the propd object contains theta_d and
+theta_e (among others), although only theta_d is active by default.
+Users can easily change which theta is active the functions
+`setDisjointed` and `setEmergent`.
 
 ```{r disjointed-and-emergent-differential-propr, collapse=TRUE}
  
@@ -380,10 +499,14 @@ theta_d <- setDisjointed(pd)  # activate only disjointed diff prop
 theta_e <- setEmergent(pd)  # activate only emergent diff prop 
 
 ```
+
 Extract the detailed results from the above objects, including OTU pairs
 and differential proportionality statistics.
 
-How to identify most important pairs based on the theta_d and theta_e? Qualitatively, the smaller the theta_d, the more important the proportional pairs are. In contrast, the bigger the theta_e, the more important the proportional pairs are. 
+How to identify most important pairs based on the theta_d and theta_e?
+Qualitatively, the smaller the theta_d, the more important the
+proportional pairs are. In contrast, the bigger the theta_e, the more
+important the proportional pairs are.
 
 ```{r estimate-FDR-disjointed-propr}
 
@@ -398,19 +521,21 @@ theta_d@fdr
 # disjointed diff. proportionality 
 theta_d_df <- getResults(theta_d) 
 
-
 ```
-The column `theta` equals theta_d matrices. Values of `theta` are 0.91 or greater which are relatively large, indicating that almost all proportional pairs do not obviously change with experimental conditions (i.e., obese or not). In addition, FDR of all the proportional pairs are greater than 5%. 
 
+The column `theta` equals theta_d matrices. Values of `theta` are 0.91
+or greater which are relatively large, indicating that almost all
+proportional pairs do not obviously change with experimental conditions
+(i.e., obese or not). In addition, FDR of all the proportional pairs are
+greater than 5%.
 
-Similarly, estimate FDR for the emergent differential proportionality. 
+Similarly, estimate FDR for the emergent differential proportionality.
 
 ```{r estimate-FDR-emergent-diff, results='hide'}
 
 theta_e <- updateCutoffs(theta_e)
 
 ```
-
 
 ```{r emergent-diff-propr-output}
 
@@ -443,14 +568,18 @@ plot(theta_d@counts[, "Odoribacter splanchnicus"] / theta_d@counts[, "Bacteroide
 
 ```
 
-
 ### Disproportionality networks
 
-Visualize the network based on disjointed differential proportionality using `plot` function. 
+Visualize the network based on disjointed differential proportionality
+using `plot` function.
 
-Providing a value of [0,1] to the cutoff argument will index pairs based on a maximum value of theta. Alternately, providing an integer greater than 1 to the cutoff argument will index the top N pairs as ranked by theta. 
+Providing a value of [0,1] to the cutoff argument will index pairs based
+on a maximum value of theta. Alternately, providing an integer greater
+than 1 to the cutoff argument will index the top N pairs as ranked by
+theta.
 
-Note that setting `d3 = TRUE` will have the `rgl` package render the network in 3D. 
+Note that setting `d3 = TRUE` will have the `rgl` package render the
+network in 3D.
 
 ```{r disjointed-prop-network, fig.height=6, fig.width=8}
 
@@ -460,11 +589,15 @@ net_d <- plot(theta_d, # disjointed proportionality object
 
 ```
 
-Each "node" represents a species/taxa while each connecting "edge" represents an indexed pair (i.e. theta < cutoff). 
+Each "node" represents a species/taxa while each connecting "edge"
+represents an indexed pair (i.e. theta \< cutoff).
 
-For disjointed proportionality networks, red edges show an increase in log-ratio means in Obese compared to Lean while blue edges show a decrease in log-ratio means in Lean. 
+For disjointed proportionality networks, red edges show an increase in
+log-ratio means in Obese compared to Lean while blue edges show a
+decrease in log-ratio means in Lean.
 
-Importantly, a small number of taxa/ species participants in a large number of the top differentially proportional pairs. 
+Importantly, a small number of taxa/ species participants in a large
+number of the top differentially proportional pairs.
 
 ```{r taxa-in-disjointed-propr, include=FALSE}
 
@@ -472,8 +605,8 @@ net_d
 
 ```
 
-
-Visualize the network based on emergent differential proportionality using `plot` function. 
+Visualize the network based on emergent differential proportionality
+using `plot` function.
 
 ```{r emergent-prop-network, fig.height=6, fig.width=8}
 
@@ -483,8 +616,18 @@ net_e <- plot(theta_e, # emergent proportionality object
 
 ```
 
-For the emergent network, red edges represent an emergency of proportionality in Group 1 compared to Group 2 (i.e., sudden coordination in ...) while blue edges represent a lack of proportionality in Group 1 compared to Group 2 (i.e., no coordination in ...). Visually, the architecture of this network is more sparse than the other. 
+For the emergent network, red edges represent an emergency of
+proportionality in Group 1 compared to Group 2 (i.e., sudden
+coordination in ...) while blue edges represent a lack of
+proportionality in Group 1 compared to Group 2 (i.e., no coordination in
+...). Visually, the architecture of this network is more sparse than the
+other.
 
-According to the packge [vignette](https://cran.microsoft.com/snapshot/2018-04-24/web/packages/propr/vignettes/e_differential.html), note that at the appropriate cutoff, a network will contain all pairs for a given FDR. However, we have routinely found that too many pairs remain when using cutoffs with an acceptable FDR. In this case, we recommend stepping through a number of arbitrarily low cutoffs to find one that produces a representative topology that is computationally tractable and human-interpretable.
-
-
+According to the packge
+[vignette](https://cran.microsoft.com/snapshot/2018-04-24/web/packages/propr/vignettes/e_differential.html),
+note that at the appropriate cutoff, a network will contain all pairs
+for a given FDR. However, we have routinely found that too many pairs
+remain when using cutoffs with an acceptable FDR. In this case, we
+recommend stepping through a number of arbitrarily low cutoffs to find
+one that produces a representative topology that is computationally
+tractable and human-interpretable.
