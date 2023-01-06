@@ -1,6 +1,6 @@
 ---
-title: "Association analysis of compositional microbiome data using R packages"
-author: "David Xin Zhao"
+title: "Proportionality analysis of compositional microbiome data, alternative to absolute correlation methods"
+author: "Xin (David) Zhao"
 date: "Last edited `r format(Sys.time(), '%d %B %Y')`"
 knit: (function(inputFile, encoding) {
       out_dir <- 'docs';
@@ -73,12 +73,13 @@ knitr::opts_chunk$set(fig.align = 'center',
                       message=FALSE) #stop render when error occurs   
 ```
 
-
 ## Project purpose
 
-- Demonstrate proportionality analysis of a real microbiome dataset using `propr` package
+-   Demonstrate proportionality analysis of a real microbiome dataset
+    using `propr` package
 
-- Evaluate precision and recall of the proportionality method (relative correlation) 
+-   Evaluate precision and recall of the proportionality method
+    (relative correlation)
 
 ## Problem
 
@@ -89,7 +90,7 @@ data is compositional and consequently make the classical methods
 inappropriate. If naively applying classical methods to compositional
 microbiome data, we likely end up with getting spurious correlations.
 
-## Solution 
+## Solution
 
 The review article published in 2017, "Microbiome datasets are
 compositional: and this is not optional" [@gloor2017]summarized four
@@ -102,11 +103,11 @@ sensitivity is limited [@quinn2017].
 
 ## Markdown outline
 
-- Calculate proportionality
-- Identify highly proportional taxa-pairs 
-- Visualize proportionality
-- Analyze differential proportionality
-- Evaluate precision and recall of the proportionality method
+-   Calculate proportionality
+-   Identify highly proportional taxa-pairs
+-   Visualize proportionality
+-   Analyze differential proportionality
+-   Evaluate precision and recall of the proportionality method
 
 ## Scripts
 
@@ -375,7 +376,10 @@ pd <- propd(counts, group, alpha = NA, p=100) # calculate disjointed- and emerge
 
 ```
 
-According the package vignette, the propd object contains theta_d and theta_e (among others), although only theta_d is active by default. Users can easily change which theta is active the functions `setDisjointed` and `setEmergent`.   
+According the package vignette, the propd object contains theta_d and
+theta_e (among others), although only theta_d is active by default.
+Users can easily change which theta is active the functions
+`setDisjointed` and `setEmergent`.
 
 ```{r disjointed-and-emergent-differential-propr, collapse=TRUE}
  
@@ -384,10 +388,14 @@ theta_d <- setDisjointed(pd)  # activate only disjointed diff prop
 theta_e <- setEmergent(pd)  # activate only emergent diff prop 
 
 ```
+
 Extract the detailed results from the above objects, including OTU pairs
 and differential proportionality statistics.
 
-How to identify most important pairs based on the theta_d and theta_e? Qualitatively, the smaller the theta_d, the more important the proportional pairs are. In contrast, the bigger the theta_e, the more important the proportional pairs are. 
+How to identify most important pairs based on the theta_d and theta_e?
+Qualitatively, the smaller the theta_d, the more important the
+proportional pairs are. In contrast, the bigger the theta_e, the more
+important the proportional pairs are.
 
 ```{r estimate-FDR-disjointed-propr}
 
@@ -404,17 +412,20 @@ theta_d_df <- getResults(theta_d)
 
 
 ```
-The column `theta` equals theta_d matrices. Values of `theta` are 0.91 or greater which are relatively large, indicating that almost all proportional pairs do not obviously change with experimental conditions (i.e., obese or not). In addition, FDR of all the proportional pairs are greater than 5%. 
 
+The column `theta` equals theta_d matrices. Values of `theta` are 0.91
+or greater which are relatively large, indicating that almost all
+proportional pairs do not obviously change with experimental conditions
+(i.e., obese or not). In addition, FDR of all the proportional pairs are
+greater than 5%.
 
-Similarly, estimate FDR for the emergent differential proportionality. 
+Similarly, estimate FDR for the emergent differential proportionality.
 
 ```{r estimate-FDR-emergent-diff, results='hide'}
 
 theta_e <- updateCutoffs(theta_e)
 
 ```
-
 
 ```{r emergent-diff-propr-output}
 
@@ -447,14 +458,18 @@ plot(theta_d@counts[, "Odoribacter splanchnicus"] / theta_d@counts[, "Bacteroide
 
 ```
 
-
 ### Disproportionality networks
 
-Visualize the network based on disjointed differential proportionality using `plot` function. 
+Visualize the network based on disjointed differential proportionality
+using `plot` function.
 
-Providing a value of [0,1] to the cutoff argument will index pairs based on a maximum value of theta. Alternately, providing an integer greater than 1 to the cutoff argument will index the top N pairs as ranked by theta. 
+Providing a value of [0,1] to the cutoff argument will index pairs based
+on a maximum value of theta. Alternately, providing an integer greater
+than 1 to the cutoff argument will index the top N pairs as ranked by
+theta.
 
-Note that setting `d3 = TRUE` will have the `rgl` package render the network in 3D. 
+Note that setting `d3 = TRUE` will have the `rgl` package render the
+network in 3D.
 
 ```{r disjointed-prop-network, fig.height=6, fig.width=8}
 
@@ -464,11 +479,15 @@ net_d <- plot(theta_d, # disjointed proportionality object
 
 ```
 
-Each "node" represents a species/taxa while each connecting "edge" represents an indexed pair (i.e. theta < cutoff). 
+Each "node" represents a species/taxa while each connecting "edge"
+represents an indexed pair (i.e. theta \< cutoff).
 
-For disjointed proportionality networks, red edges show an increase in log-ratio means in Obese compared to Lean while blue edges show a decrease in log-ratio means in Lean. 
+For disjointed proportionality networks, red edges show an increase in
+log-ratio means in Obese compared to Lean while blue edges show a
+decrease in log-ratio means in Lean.
 
-Importantly, a small number of taxa/ species participants in a large number of the top differentially proportional pairs. 
+Importantly, a small number of taxa/ species participants in a large
+number of the top differentially proportional pairs.
 
 ```{r taxa-in-disjointed-propr, include=FALSE}
 
@@ -476,8 +495,8 @@ net_d
 
 ```
 
-
-Visualize the network based on emergent differential proportionality using `plot` function. 
+Visualize the network based on emergent differential proportionality
+using `plot` function.
 
 ```{r emergent-prop-network, fig.height=6, fig.width=8}
 
@@ -487,8 +506,18 @@ net_e <- plot(theta_e, # emergent proportionality object
 
 ```
 
-For the emergent network, red edges represent an emergency of proportionality in Group 1 compared to Group 2 (i.e., sudden coordination in ...) while blue edges represent a lack of proportionality in Group 1 compared to Group 2 (i.e., no coordination in ...). Visually, the architecture of this network is more sparse than the other. 
+For the emergent network, red edges represent an emergency of
+proportionality in Group 1 compared to Group 2 (i.e., sudden
+coordination in ...) while blue edges represent a lack of
+proportionality in Group 1 compared to Group 2 (i.e., no coordination in
+...). Visually, the architecture of this network is more sparse than the
+other.
 
-According to the packge [vignette](https://cran.microsoft.com/snapshot/2018-04-24/web/packages/propr/vignettes/e_differential.html), note that at the appropriate cutoff, a network will contain all pairs for a given FDR. However, we have routinely found that too many pairs remain when using cutoffs with an acceptable FDR. In this case, we recommend stepping through a number of arbitrarily low cutoffs to find one that produces a representative topology that is computationally tractable and human-interpretable.
-
-
+According to the packge
+[vignette](https://cran.microsoft.com/snapshot/2018-04-24/web/packages/propr/vignettes/e_differential.html),
+note that at the appropriate cutoff, a network will contain all pairs
+for a given FDR. However, we have routinely found that too many pairs
+remain when using cutoffs with an acceptable FDR. In this case, we
+recommend stepping through a number of arbitrarily low cutoffs to find
+one that produces a representative topology that is computationally
+tractable and human-interpretable.
