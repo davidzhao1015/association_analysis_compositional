@@ -1,5 +1,5 @@
 ---
-title: "Proportionality analysis of compositional microbiome data, alternative to absolute correlation methods"
+title: "Proportionality analysis of compositional microbiome data, using a real dataset"
 author: "Xin (David) Zhao"
 date: "Last edited `r format(Sys.time(), '%d %B %Y')`"
 knit: (function(inputFile, encoding) {
@@ -75,11 +75,12 @@ knitr::opts_chunk$set(fig.align = 'center',
 
 ## Project purpose
 
--   Demonstrate proportionality analysis of a real microbiome dataset
-    using `propr` package
+This mini project aims to: 
 
--   Evaluate precision and recall of the proportionality method
-    (relative correlation)
+-   demonstrate the proportionality analysis on a real human dataset,
+    using `propr` R package
+
+-   validate the proportionality method by evaluating precision and recall
 
 ## Problem
 
@@ -88,13 +89,13 @@ OTUs/ taxa. Pearson r Correlation and Spearman's Rank Correlation are
 classical methods in association analysis. However, microbiome relative
 data is compositional and consequently make the classical methods
 inappropriate. If naively applying classical methods to compositional
-microbiome data, we likely end up with getting spurious correlations.
+microbiome data, we will get spurious correlations.
 
 ## Solution
 
 The review article published in 2017, "Microbiome datasets are
 compositional: and this is not optional" [@gloor2017]summarized four
-newly-invented statistical methods dealing with compositionality and
+valid statistical methods dealing with compositionality and
 achieving reliable association relationship. The four methods consists
 of SparCC, Spiec Easi, proportionality (ϕ and ρ).
 
@@ -106,12 +107,13 @@ sensitivity is limited [@quinn2017].
 -   Calculate proportionality
 -   Identify highly proportional taxa-pairs
 -   Visualize proportionality
+-   Evaluate precision and recall
 -   Analyze differential proportionality
--   Evaluate precision and recall of the proportionality method
 
 ## Scripts
 
 ```{r libaries, results='hide'}
+
 library(tidyverse) 
 
 library(devtools)
@@ -123,7 +125,7 @@ library(stringr)
 
 ```
 
-### Step 1. Load dataset
+### Load datasets
 
 The microbiome OTU table and metadata was retrieved from [ML
 Repo](https://knights-lab.github.io/MLRepo/docs/turnbaugh_lean_obese_all.html)
@@ -192,6 +194,8 @@ head(meta)
 The metadata contains `r dim(meta)[1]` samples. `Var` indicates the
 independent, binary variable of interest, `Lean` and `Obese`.
 
+### 2. Preprocess data frames for following proportionality analysis
+
 Transpose the OTU table into sample x taxa format which is suitable for
 proportionality analysis.
 
@@ -242,7 +246,7 @@ sum(is.na(otu_count_splevel2))
 
 ```
 
-### Step 2. Calculate proportionality using propr R package
+### Calculate proportionality
 
 Calculate a proportionality measurement, `rho` using `propr` function,
 following the procedures and codes provided by T.P.Quinn et al.
@@ -328,6 +332,8 @@ high_propr_pairs
   
 ```
 
+### Visualize proportionality 
+
 Visualize proportionality with a strict cutoff, using `getNetwork`
 function. The package
 [vignette](https://rdrr.io/cran/propr/f/vignettes/b_visualization.Rmd)
@@ -342,6 +348,8 @@ getNetwork(pr,
 # plot(pr_sub_high)
 ```
 
+### Interprete proportionality 
+
 How to interpret proportionality? Proportionality depends on
 log-transformation and must get interpreted with respect to the chosen
 reference.
@@ -352,7 +360,7 @@ proportional OTUs move together as individuals relative to how most
 genes move on average [@quinn2019].
 
 
-## Evaluate precision and recall of proportionality 
+### Evaluate precision and recall (sensitivity) of the proportionality method 
 
 Apply Spearman rank correlation to raw absolute abundance matrix. Consider the resulting Spearman correlation coefficients (absolute correlation) as the true correlations between taxa pairs. 
 
@@ -441,7 +449,7 @@ table("Actual" = abs_rel_coef2$sp_coef > 0.9,
 ```
 
 
-## Differential proportionality analysis
+### Differential proportionality analysis
 
 `propd` functions in the `propr` package can test whether
 proportionality of certain pairs change between binary experimental
