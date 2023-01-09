@@ -96,7 +96,6 @@ This mini project aims to:
 -   validate the proportionality method by evaluating precision and
     recall
 
-
 ## Problem
 
 Association analysis in microbiome studies infers relationship between
@@ -299,7 +298,6 @@ pr_sub <- subset(pr, select = keep_index)
 
 ```
 
-
 ::: {.blackbox data-latex=""}
 ::: {.center data-latex=""}
 Set three required arguments in the wrapper `propr` function as follows,
@@ -312,9 +310,7 @@ Set three required arguments in the wrapper `propr` function as follows,
     'phs'
 
 -   `ivar` reference OTU/ feature
-
 :::
-
 
 For proportionality, permute false discovery rate (FDR) for a given
 cut-off, instead of estimating parametric P-value.
