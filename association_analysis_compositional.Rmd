@@ -659,6 +659,10 @@ net_e <- plot(theta_e, # emergent proportionality object
 
 ```
 
+For the emergent network, red edges represent an emergency of proportionality in Group 1 compared to Group 2 (i.e., sudden coordination in …) while blue edges represent a lack of proportionality in Group 1 compared to Group 2 (i.e., no coordination in …). Visually, the architecture of this network is more sparse than the other.
+
+According to the packge vignette, note that at the appropriate cutoff, a network will contain all pairs for a given FDR. However, we have routinely found that too many pairs remain when using cutoffs with an acceptable FDR. In this case, we recommend stepping through a number of arbitrarily low cutoffs to find one that produces a representative topology that is computationally tractable and human-interpretable.
+
 ## Reference
 
 <div id="refs"></div> 
