@@ -57,6 +57,18 @@ p {
  font-size: 100%;
 }
 
+.blackbox {
+  padding: 1em;
+  background: black;
+  color: white;
+  border: 2px solid orange;
+  border-radius: 10px;
+}
+
+.center {
+  text-align: center;
+}
+
 </style>
 ```
 </head>
@@ -83,6 +95,15 @@ This mini project aims to:
 
 -   validate the proportionality method by evaluating precision and
     recall
+    
+:::: {.blackbox data-latex=""}
+::: {.center data-latex=""}
+**NOTICE!**
+:::
+
+Thank you for noticing this **new notice**! Your noticing it has
+been noted, and _will be reported to the authorities_!
+::::
 
 ## Problem
 
