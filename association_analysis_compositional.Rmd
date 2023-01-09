@@ -71,6 +71,7 @@ p {
 
 </style>
 ```
+
 </head>
 
 </html>
@@ -657,14 +658,3 @@ net_e <- plot(theta_e, # emergent proportionality object
               d3=F)  # whether or not display 3-D plot   
 
 ```
-
-According to the package
-[vignette](https://cran.microsoft.com/snapshot/2018-04-24/web/packages/propr/vignettes/e_differential.html),
-note that at the appropriate cutoff, a network will contain all pairs
-for a given FDR. However, we have routinely found that too many pairs
-remain when using cutoffs with an acceptable FDR. In this case, we
-recommend stepping through a number of arbitrarily low cutoffs to find
-one that produces a representative topology that is computationally
-tractable and human-interpretable.
-
-Package version `r sessionInfo()`
