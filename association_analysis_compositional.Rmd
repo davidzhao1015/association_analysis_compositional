@@ -674,11 +674,7 @@ recommend stepping through a number of arbitrarily low cutoffs to find
 one that produces a representative topology that is computationally
 tractable and human-interpretable.
 
-## Reference
-
-<div id="refs"></div>
-
 
 ## Package version
-`r sessionInfo()` 
 
+`r sessionInfo()`
