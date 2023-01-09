@@ -658,3 +658,14 @@ net_e <- plot(theta_e, # emergent proportionality object
               d3=F)  # whether or not display 3-D plot   
 
 ```
+
+## Package version 
+The analysis was performed with R version `r getRversion()`. Version information of all the R packages are as follow, 
+```{r package version}
+
+sessionInfo()
+
+```
+
+
+
