@@ -660,10 +660,8 @@ net_e <- plot(theta_e, # emergent proportionality object
 
 For the emergent network, red edges represent an emergency of
 proportionality in Group 1 compared to Group 2 (i.e., sudden
-coordination in ...) while blue edges represent a lack of
-proportionality in Group 1 compared to Group 2 (i.e., no coordination in
-...). Visually, the architecture of this network is more sparse than the
-other.
+coordination in) while blue edges represent a lack of
+proportionality in Group 1 compared to Group 2 (i.e., no coordination in). Visually, the architecture of this network is more sparse than the other.
 
 According to the packge
 [vignette](https://cran.microsoft.com/snapshot/2018-04-24/web/packages/propr/vignettes/e_differential.html),
