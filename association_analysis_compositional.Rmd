@@ -59,8 +59,8 @@ p {
 
 .blackbox {
   padding: 1em;
-  background: black;
-  color: white;
+  background: green;
+  color: black;
   border: 2px solid orange;
   border-radius: 10px;
 }
@@ -96,14 +96,6 @@ This mini project aims to:
 -   validate the proportionality method by evaluating precision and
     recall
 
-::: {.blackbox data-latex=""}
-::: {.center data-latex=""}
-**NOTICE!**
-:::
-
-Thank you for noticing this **new notice**! Your noticing it has been
-noted, and *will be reported to the authorities*!
-:::
 
 ## Problem
 
@@ -307,7 +299,11 @@ pr_sub <- subset(pr, select = keep_index)
 
 ```
 
+
+::: {.blackbox data-latex=""}
+::: {.center data-latex=""}
 Set three required arguments in the wrapper `propr` function as follows,
+:::
 
 -   `counts` a count matrix with subjects as rows and features as
     columns
@@ -316,6 +312,9 @@ Set three required arguments in the wrapper `propr` function as follows,
     'phs'
 
 -   `ivar` reference OTU/ feature
+
+:::
+
 
 For proportionality, permute false discovery rate (FDR) for a given
 cut-off, instead of estimating parametric P-value.
