@@ -66,10 +66,11 @@ p {
 ```{r setup, include = FALSE}
 # set options for the entire document 
 knitr::opts_chunk$set(fig.align = 'center', 
-                      fig.dim =c(6,4), 
+                      fig.height=6, fig.width=8,
                       dev="png",
                       echo=TRUE, #display code in output document 
                       error=FALSE,
+                      collapse = FALSE, 
                       message=FALSE) #stop render when error occurs   
 ```
 
@@ -112,7 +113,7 @@ sensitivity is limited [@quinn2017].
 
 ## Scripts
 
-```{r libaries, results='hide'}
+```{r libaries, results='hide', warning=FALSE}
 
 library(tidyverse) 
 
@@ -228,7 +229,13 @@ otu_count_splevel2_meta <- otu_count_splevel2 %>%
         inner_join(meta, by= "sample") %>%
         column_to_rownames("sample") 
 
-head(otu_count_splevel2_meta)
+head(otu_count_splevel2_meta) # print first rows 
+
+# knitr::kable(
+#   head(otu_count_splevel2_meta[ ,1:8], 10), 
+#   booktabs=TRUE,
+#   caption = "A table of the first 6 rows of the OTU matrix at the species level"
+)
 
 ```
 
@@ -305,11 +312,11 @@ pr <- updateCutoffs(pr, cutoff = seq(0, 1,.05))
 The table shows that the largest cutoff is 0.20 when the FDR reaches 5% or fewer. 
 
 
-Identify highly-proportional (rho \>= 0.65) feature/ species pairs.
+Identify highly-proportional (rho \>= 0.7) feature/ species pairs.
 
 ```{r highly-proportional-pairs}
 
-pr_sub_high <- pr_sub[">", .65] 
+pr_sub_high <- pr_sub[">", .7] 
 pr_sub_high 
 
 pr_sub_high@pairs # index of highly proportional pairs 
@@ -325,10 +332,14 @@ high_propr_pairs <- pr_sub_high_mt %>%
   mutate(partner_index = as.numeric(partner)) %>% 
   mutate(pair_index = as.numeric(pair)) %>% 
   filter(partner_index < pair_index) %>% 
-  filter(rho > 0.65) %>% 
-  select(partner, pair, rho)
+  filter(rho > 0.7) %>% 
+  select(partner, pair, rho) %>% 
+  mutate(rho = round(rho, 2))
 
-high_propr_pairs  
+
+knitr::kable(high_propr_pairs, 
+             booktab = TRUE,
+             caption = "Highly proportional species pairs (rho > 0.7)") 
   
 ```
 
@@ -339,7 +350,7 @@ function. The package
 [vignette](https://rdrr.io/cran/propr/f/vignettes/b_visualization.Rmd)
 describes several built-in tools for visualizing proportionality.
 
-```{r proportionality-based network}
+```{r proportionality-based network, message=FALSE, fig.height=6, fig.width=8, fig.cap="Proportionality network based on rho matrics"}
 
 getNetwork(pr, 
            cutoff = 0.7, 
@@ -366,7 +377,7 @@ Apply Spearman rank correlation to raw absolute abundance matrix. Consider the r
 
 Use `Hmisc` package to implement Spearman rank correlation analysis and `corrplot` package to visualize correlation matrix. 
 
-```{r spearman-absoulte-corr, fig.height=6, fig.width=8, message=FALSE} 
+```{r spearman-absoulte-corr, fig.height=6, fig.width=8, message=FALSE, fig.cap="Correlation matrix of 517 species based on Spearman rank correlation method"} 
 
 spearman_corr <- Hmisc::rcorr(as.matrix(otu_count_splevel2), 
                               type = "spearman")   
@@ -377,6 +388,8 @@ corrplot::corrplot(spearman_corr$r,
                    type="upper") 
 
 ```
+
+
 ```{r compare-abs-vs-rel-corr}
 
 # extract Spearman coefficients 
@@ -432,21 +445,19 @@ ggplot(abs_rel_coef, aes(x= sp_coef, y= rho_propr))+
 
 
 # contingency table 
-abs_rel_coef2 <- abs_rel_coef %>% 
-  mutate(is.sig_sp = case_when(
-    sp_pval <= 0.05 ~ "yes",
-    sp_pval > 0.05 ~ "no"
-  )) %>% 
-  mutate(is.sig_propr = case_when(
-    rho_propr >= 0.9 ~ "yes",
-    rho_propr < 0.9 ~ "no"
-  ))
+cont_matrix <- table("Actual" = abs_rel_coef$sp_coef > 0.9,
+                     "Observed" = abs_rel_coef$rho_propr > 0.9)  
 
-table("Actual" = abs_rel_coef2$sp_coef > 0.9, 
-      "Observed" = abs_rel_coef2$rho_propr > 0.9)  
+cont_matrix # print 
+
+
+prop.table(cont_matrix, 1)[1,1] # specificity
+prop.table(cont_matrix, 1)[2,2] # sensitivity 
 
 
 ```
+
+At the rho (proportionality matrices) cutoff of 0.9, the specificity of the proportionality is 91.1% and the sensitivity 62.5%.  
 
 
 ### Differential proportionality analysis
@@ -522,6 +533,10 @@ important the proportional pairs are.
 theta_d <- updateCutoffs(theta_d, cutoff = seq(0.91, 1, 0.001)) 
 
 theta_d@fdr  
+
+knitr::kable(head(theta_d@fdr, 10),
+             caption = "FDRs at various rho cutoffs",
+             digits = 2) 
 ```
 
 ```{r disjointed-diff-propr-output}
@@ -589,7 +604,7 @@ theta.
 Note that setting `d3 = TRUE` will have the `rgl` package render the
 network in 3D.
 
-```{r disjointed-prop-network, fig.height=6, fig.width=8}
+```{r disjointed-prop-network, fig.height=6, fig.width=8, fig.cap="Disproportionality network based on disjointed proportionality"}
 
 net_d <- plot(theta_d, # disjointed proportionality object 
               cutoff= 300,  
@@ -616,7 +631,7 @@ net_d
 Visualize the network based on emergent differential proportionality
 using `plot` function.
 
-```{r emergent-prop-network, fig.height=6, fig.width=8}
+```{r emergent-prop-network, fig.height=6, fig.width=8, fig.cap="Disproportionality network based on emergent proportionality" }
 
 net_e <- plot(theta_e, # emergent proportionality object 
               cutoff=800, 
