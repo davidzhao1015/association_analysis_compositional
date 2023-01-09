@@ -76,12 +76,13 @@ knitr::opts_chunk$set(fig.align = 'center',
 
 ## Project purpose
 
-This mini project aims to: 
+This mini project aims to:
 
 -   demonstrate the proportionality analysis on a real human dataset,
     using `propr` R package
 
--   validate the proportionality method by evaluating precision and recall
+-   validate the proportionality method by evaluating precision and
+    recall
 
 ## Problem
 
@@ -96,9 +97,9 @@ microbiome data, we will get spurious correlations.
 
 The review article published in 2017, "Microbiome datasets are
 compositional: and this is not optional" [@gloor2017]summarized four
-valid statistical methods dealing with compositionality and
-achieving reliable association relationship. The four methods consists
-of SparCC, Spiec Easi, proportionality (ϕ and ρ).
+valid statistical methods dealing with compositionality and achieving
+reliable association relationship. The four methods consists of SparCC,
+Spiec Easi, proportionality (ϕ and ρ).
 
 Proportionality is a precise indicator of absolute correlation, although
 sensitivity is limited [@quinn2017].
@@ -232,10 +233,10 @@ otu_count_splevel2_meta <- otu_count_splevel2 %>%
 head(otu_count_splevel2_meta) # print first rows 
 
 # knitr::kable(
-#   head(otu_count_splevel2_meta[ ,1:8], 10), 
+#   head(otu_count_splevel2_meta[ ,1:8], 10),
 #   booktabs=TRUE,
 #   caption = "A table of the first 6 rows of the OTU matrix at the species level"
-)
+# )
 
 ```
 
@@ -258,16 +259,6 @@ sum(is.na(otu_count_splevel2))
 Calculate a proportionality measurement, `rho` using `propr` function,
 following the procedures and codes provided by T.P.Quinn et al.
 [@quinn2019]
-
-Set three required arguments in the wrapper `propr` function as follows,
-
--   `counts` a count matrix with subjects as rows and features as
-    columns
-
--   `metric` the proportionality metric to calculate, 'rho', 'pho' or
-    'phs'
-
--   `ivar` reference OTU/ feature
 
 ```{r proportionality}
 
@@ -295,6 +286,17 @@ pr_sub <- subset(pr, select = keep_index)
 
 ```
 
+Set three required arguments in the wrapper `propr` function as follows,
+
+-   `counts` a count matrix with subjects as rows and features as
+    columns
+
+-   `metric` the proportionality metric to calculate, 'rho', 'pho' or
+    'phs'
+
+-   `ivar` reference OTU/ feature
+
+
 For proportionality, permute false discovery rate (FDR) for a given
 cut-off, instead of estimating parametric P-value.
 
@@ -309,8 +311,9 @@ pr <- updateCutoffs(pr, cutoff = seq(0, 1,.05))
 
 
 ```
-The table shows that the largest cutoff is 0.20 when the FDR reaches 5% or fewer. 
 
+The table shows that the largest cutoff is 0.20 when the FDR reaches 5%
+or fewer.
 
 Identify highly-proportional (rho \>= 0.7) feature/ species pairs.
 
@@ -343,7 +346,7 @@ knitr::kable(high_propr_pairs,
   
 ```
 
-### Visualize proportionality 
+### Visualize proportionality
 
 Visualize proportionality with a strict cutoff, using `getNetwork`
 function. The package
@@ -359,7 +362,7 @@ getNetwork(pr,
 # plot(pr_sub_high)
 ```
 
-### Interprete proportionality 
+### Interprete proportionality
 
 How to interpret proportionality? Proportionality depends on
 log-transformation and must get interpreted with respect to the chosen
@@ -370,14 +373,16 @@ follows the general trend of the data. In other words, these
 proportional OTUs move together as individuals relative to how most
 genes move on average [@quinn2019].
 
+### Evaluate precision and recall (sensitivity) of the proportionality method
 
-### Evaluate precision and recall (sensitivity) of the proportionality method 
+Apply Spearman rank correlation to raw absolute abundance matrix.
+Consider the resulting Spearman correlation coefficients (absolute
+correlation) as the true correlations between taxa pairs.
 
-Apply Spearman rank correlation to raw absolute abundance matrix. Consider the resulting Spearman correlation coefficients (absolute correlation) as the true correlations between taxa pairs. 
+Use `Hmisc` package to implement Spearman rank correlation analysis and
+`corrplot` package to visualize correlation matrix.
 
-Use `Hmisc` package to implement Spearman rank correlation analysis and `corrplot` package to visualize correlation matrix. 
-
-```{r spearman-absoulte-corr, fig.height=6, fig.width=8, message=FALSE, fig.cap="Correlation matrix of 517 species based on Spearman rank correlation method"} 
+```{r spearman-absoulte-corr, fig.height=6, fig.width=8, message=FALSE, fig.cap="Correlation matrix of 517 species based on Spearman rank correlation method"}
 
 spearman_corr <- Hmisc::rcorr(as.matrix(otu_count_splevel2), 
                               type = "spearman")   
@@ -388,7 +393,6 @@ corrplot::corrplot(spearman_corr$r,
                    type="upper") 
 
 ```
-
 
 ```{r compare-abs-vs-rel-corr}
 
@@ -457,8 +461,8 @@ prop.table(cont_matrix, 1)[2,2] # sensitivity
 
 ```
 
-At the rho (proportionality matrices) cutoff of 0.9, the specificity of the proportionality is 91.1% and the sensitivity 62.5%.  
-
+At the rho (proportionality matrices) cutoff of 0.9, the specificity of
+the proportionality is 91.1% and the sensitivity 62.5%.
 
 ### Differential proportionality analysis
 
