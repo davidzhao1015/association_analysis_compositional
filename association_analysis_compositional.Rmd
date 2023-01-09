@@ -659,9 +659,15 @@ net_e <- plot(theta_e, # emergent proportionality object
 
 ```
 
+## Reference
+
+<div id="refs"></div> 
+
 ## Package version 
+
 The analysis was performed with R version `r getRversion()`. Version information of all the R packages are as follow, 
-```{r package version}
+
+```{r package version, echo=FALSE}
 
 sessionInfo()
 
