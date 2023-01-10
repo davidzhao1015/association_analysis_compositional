@@ -570,7 +570,7 @@ knitr::kable(head(theta_d@fdr, 10),
 # disjointed diff. proportionality 
 theta_d_df <- getResults(theta_d) 
 
-theta_d_df %>% 
+theta_d_df_sub <- theta_d_df %>% 
   select(Partner, Pair, theta, lrv, lrv1, lrv2, lrm, lrm1, lrm2) %>% 
   mutate(lrv = round(lrv,2),
          lrv1 = round(lrv1, 2),
@@ -579,8 +579,13 @@ theta_d_df %>%
          lrm1 = round(lrm1, 2),
          lrm2 = round(lrm2, 2)) 
 
+theta_d_df_sub 
+
 
 ```
+
+In the table,  `theta` indicates theta_d in this case. `lrv1` represents log-ratio variance in the `Obese` group; `lrv2` in the `Lean` group. `lrm1` represents log-ratio mean in the `Obese` group, and `lrm2` in the `Lean` group. 
+
 
 The column `theta` equals theta_d matrices. Values of `theta` are 0.91
 or greater which are relatively large, indicating that almost all
@@ -661,10 +666,9 @@ number of the top differentially proportional pairs.
 
 ```{r taxa-in-disjointed-propr, include=FALSE}
 
-igraph::print_all(net_d) 
-
-igraph::edge_attr(net_d, "color") # edge colors, light-sea-green and coral1 
-
+# igraph::print_all(net_d) # all vertex names 
+# 
+# igraph::edge_attr(net_d, "color") # edge colors, light-sea-green and coral1 
 
 ```
 
