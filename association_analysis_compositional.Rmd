@@ -71,7 +71,6 @@ p {
 
 </style>
 ```
-
 </head>
 
 </html>
@@ -87,45 +86,52 @@ knitr::opts_chunk$set(fig.align = 'center',
                       message=FALSE) #stop render when error occurs   
 ```
 
-## Project purpose
-
-This mini project aims to:
-
--   demonstrate the proportionality analysis on a real human dataset,
-    using `propr` R package
-
--   validate the proportionality method by evaluating precision and
-    recall
-
 ## Problem
 
-Association analysis in microbiome studies infers relationship between
-OTUs/ taxa. Pearson r Correlation and Spearman's Rank Correlation are
-classical methods in association analysis. However, microbiome relative
-data is compositional and consequently make the classical methods
-inappropriate. If naively applying classical methods to compositional
-microbiome data, we will get spurious correlations.
+One common goal of the microbiome study is to infer dependence
+relationship between taxa. Relative abundance data of microbiota is
+compositional data. The classic statistical methods (e.g., Pearson
+correlation and Spearman rank correlation), however, are invalid for
+compositional (microbiome) data and leads to spurious correlations.
 
 ## Solution
 
-The review article published in 2017, "Microbiome datasets are
-compositional: and this is not optional" [@gloor2017]summarized four
-valid statistical methods dealing with compositionality and achieving
-reliable association relationship. The four methods consists of SparCC,
-Spiec Easi, proportionality (ϕ and ρ).
+The review article, "Microbiome datasets are compositional: and this is
+not optional" [@gloor2017]summarized three valid statistical methods
+that deal with compositionality in microbiome relative abundance data to
+achieve reliable inferred correlation, including proportionality and
+SparCC, Spiec Easi.
 
-Proportionality is a precise indicator of absolute correlation, although
-sensitivity is limited [@quinn2017].
+In this mini-project, I focused on illustrating proportionality analysis
+on the real microbiome data. Lovell and co-authors [@lovell2015]
+proposed the proportionality method for relative correlation, as a valid
+alternative to absolute correlation. In 2017, Quinn and his colleagues
+developed the R package, propr to implement the proportionality analysis
+[@quinn2017].
 
-## Markdown outline
+Based on experiments on simulation datasets, proportionality is a
+precise indicator of absolute correlation, although sensitivity is
+limited [@quinn2017].
 
--   Calculate proportionality
--   Identify highly proportional taxa-pairs
--   Visualize proportionality
--   Evaluate precision and recall
--   Analyze differential proportionality
+## Purpose of mini-project
 
-## Scripts
+This mini-project is aimed to:
+
+-   illustrate the proportionality analysis on a real dataset, using
+    `propr` R package
+
+-   validate the proportionality method on the real dataset, by checking
+    up the sensitivity and specificity
+
+## Outline of mini-project
+
+1.  Calculate proportionality
+2.  Identify highly-proportional taxa-pairs
+3.  Visualize proportionality
+4.  Evaluate sensitivity and specificity
+5.  Analyze differential proportionality
+
+## R scripts
 
 ```{r libaries, results='hide', warning=FALSE}
 
@@ -378,7 +384,7 @@ getNetwork(pr,
 # plot(pr_sub_high)
 ```
 
-### Interprete proportionality
+### Interpret proportionality
 
 How to interpret proportionality? Proportionality depends on
 log-transformation and must get interpreted with respect to the chosen
@@ -389,7 +395,7 @@ follows the general trend of the data. In other words, these
 proportional OTUs move together as individuals relative to how most
 genes move on average [@quinn2019].
 
-### Evaluate precision and recall (sensitivity) of the proportionality method
+### Evaluate sensitivity and specificity of the proportionality method
 
 Apply Spearman rank correlation to raw absolute abundance matrix.
 Consider the resulting Spearman correlation coefficients (absolute
@@ -564,6 +570,16 @@ knitr::kable(head(theta_d@fdr, 10),
 # disjointed diff. proportionality 
 theta_d_df <- getResults(theta_d) 
 
+theta_d_df %>% 
+  select(Partner, Pair, theta, lrv, lrv1, lrv2, lrm, lrm1, lrm2) %>% 
+  mutate(lrv = round(lrv,2),
+         lrv1 = round(lrv1, 2),
+         lrv2 = round(lrv2, 2),
+         lrm = round(lrm, 2),
+         lrm1 = round(lrm1, 2),
+         lrm2 = round(lrm2, 2)) 
+
+
 ```
 
 The column `theta` equals theta_d matrices. Values of `theta` are 0.91
@@ -595,10 +611,10 @@ plot(theta_d@counts[, "Odoribacter splanchnicus"],
 grp1 <- theta_d@group == "Obese"
 grp2 <- theta_d@group != "Obese"
 abline(a = 0,
-       b = theta_d@counts[grp1, "Odoribacter splanchnicus"] / theta_d@counts[grp1, "Bacteroides massiliensis"],
+       b = theta_d@counts[grp1, "Bacteroides massiliensis"] / theta_d@counts[grp1, "Odoribacter splanchnicus"],
        col = "red")
 abline(a = 0,
-       b = theta_d@counts[grp2, "Odoribacter splanchnicus"] / theta_d@counts[grp2, "Bacteroides massiliensis"],
+       b = theta_d@counts[grp2, "Bacteroides massiliensis"] / theta_d@counts[grp2, "Odoribacter splanchnicus"],
        col = "blue")
 
 
@@ -606,7 +622,7 @@ abline(a = 0,
 
 ```{r scatter-plot-ratio-abundance, fig.height=6, fig.width=8, include=FALSE}
 
-plot(theta_d@counts[, "Odoribacter splanchnicus"] / theta_d@counts[, "Bacteroides massiliensis"],
+plot(theta_d@counts[grp1, "Bacteroides massiliensis"] / theta_d@counts[grp1, "Odoribacter splanchnicus"],
      col = ifelse(theta_d@group == "Obese", "red", "blue"))
 
 ```
@@ -624,27 +640,31 @@ theta.
 Note that setting `d3 = TRUE` will have the `rgl` package render the
 network in 3D.
 
+The [igraph package](https://igraph.org/r/doc/aaa-igraph-package.html) implement visualization of the theta_d object. 
+
 ```{r disjointed-prop-network, fig.height=6, fig.width=8, fig.cap="Disproportionality network based on disjointed proportionality"}
 
 net_d <- plot(theta_d, # disjointed proportionality object 
               cutoff= 300,  
-              d3= F)  # whether or not display 3-D plot 
+              d3= F)
 
 ```
 
 Each "node" represents a species/taxa while each connecting "edge"
 represents an indexed pair (i.e. theta \< cutoff).
 
-For disjointed proportionality networks, red edges show an increase in
-log-ratio means in Obese compared to Lean while blue edges show a
-decrease in log-ratio means in Lean.
+For disjointed proportionality networks, red edges represent proportional pairs has higher log-ratio mean in `Obese` compared to `Lean`;  green edges represent higher log-ratio mean in `Lean` compared to `Obese`. 
 
 Importantly, a small number of taxa/ species participants in a large
 number of the top differentially proportional pairs.
 
+
 ```{r taxa-in-disjointed-propr, include=FALSE}
 
-net_d
+igraph::print_all(net_d) 
+
+igraph::edge_attr(net_d, "color") # edge colors, light-sea-green and coral1 
+
 
 ```
 
@@ -659,23 +679,25 @@ net_e <- plot(theta_e, # emergent proportionality object
 
 ```
 
-For the emergent network, red edges represent an emergency of proportionality in Group 1 compared to Group 2 (i.e., sudden coordination in …) while blue edges represent a lack of proportionality in Group 1 compared to Group 2 (i.e., no coordination in …). Visually, the architecture of this network is more sparse than the other.
+For the emergent network, red edges represent an emergency of
+proportionality in `Obese` compared to `Lean` (i.e., sudden
+coordination in `Obese`) while green edges represent a lack of
+proportionality in `Obese` compared to `Lean` (i.e., no coordination in
+`Obese`).
 
-According to the packge vignette, note that at the appropriate cutoff, a network will contain all pairs for a given FDR. However, we have routinely found that too many pairs remain when using cutoffs with an acceptable FDR. In this case, we recommend stepping through a number of arbitrarily low cutoffs to find one that produces a representative topology that is computationally tractable and human-interpretable.
 
 ## Reference
 
-<div id="refs"></div> 
+::: {#refs}
+:::
 
-## Package version 
+## Package version
 
-The analysis was performed with R version `r getRversion()`. Version information of all the R packages are as follow, 
+The analysis was performed with R version `r getRversion()`. Version
+information of all the R packages are as follow,
 
 ```{r package version, echo=FALSE}
 
 sessionInfo()
 
 ```
-
-
-
