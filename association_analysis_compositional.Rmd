@@ -86,6 +86,8 @@ knitr::opts_chunk$set(fig.align = 'center',
                       message=FALSE) #stop render when error occurs   
 ```
 
+![Internet image](images/obese-microbo.jpg)
+
 ## Problem
 
 One common goal of the microbiome study is to infer dependence
@@ -584,8 +586,10 @@ theta_d_df_sub
 
 ```
 
-In the table,  `theta` indicates theta_d in this case. `lrv1` represents log-ratio variance in the `Obese` group; `lrv2` in the `Lean` group. `lrm1` represents log-ratio mean in the `Obese` group, and `lrm2` in the `Lean` group. 
-
+In the table, `theta` indicates theta_d in this case. `lrv1` represents
+log-ratio variance in the `Obese` group; `lrv2` in the `Lean` group.
+`lrm1` represents log-ratio mean in the `Obese` group, and `lrm2` in the
+`Lean` group.
 
 The column `theta` equals theta_d matrices. Values of `theta` are 0.91
 or greater which are relatively large, indicating that almost all
@@ -645,7 +649,8 @@ theta.
 Note that setting `d3 = TRUE` will have the `rgl` package render the
 network in 3D.
 
-The [igraph package](https://igraph.org/r/doc/aaa-igraph-package.html) implement visualization of the theta_d object. 
+The [igraph package](https://igraph.org/r/doc/aaa-igraph-package.html)
+implement visualization of the theta_d object.
 
 ```{r disjointed-prop-network, fig.height=6, fig.width=8, fig.cap="Disproportionality network based on disjointed proportionality"}
 
@@ -658,11 +663,13 @@ net_d <- plot(theta_d, # disjointed proportionality object
 Each "node" represents a species/taxa while each connecting "edge"
 represents an indexed pair (i.e. theta \< cutoff).
 
-For disjointed proportionality networks, red edges represent proportional pairs has higher log-ratio mean in `Obese` compared to `Lean`;  green edges represent higher log-ratio mean in `Lean` compared to `Obese`. 
+For disjointed proportionality networks, red edges represent
+proportional pairs has higher log-ratio mean in `Obese` compared to
+`Lean`; green edges represent higher log-ratio mean in `Lean` compared
+to `Obese`.
 
 Importantly, a small number of taxa/ species participants in a large
 number of the top differentially proportional pairs.
-
 
 ```{r taxa-in-disjointed-propr, include=FALSE}
 
@@ -684,11 +691,9 @@ net_e <- plot(theta_e, # emergent proportionality object
 ```
 
 For the emergent network, red edges represent an emergency of
-proportionality in `Obese` compared to `Lean` (i.e., sudden
-coordination in `Obese`) while green edges represent a lack of
-proportionality in `Obese` compared to `Lean` (i.e., no coordination in
-`Obese`).
-
+proportionality in `Obese` compared to `Lean` (i.e., sudden coordination
+in `Obese`) while green edges represent a lack of proportionality in
+`Obese` compared to `Lean` (i.e., no coordination in `Obese`).
 
 ## Reference
 
